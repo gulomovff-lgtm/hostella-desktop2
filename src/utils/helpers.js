@@ -263,181 +263,303 @@ export const getGuestPaidAmount = (guest) => {
 export const getTotalPaid = getGuestPaidAmount;
 
 // Print check/receipt
+// FIX ISSUE #6: Print check with error handling and fallback
 export const printCheck = (guest, hostel) => {
-  const w = window.open('', '', 'width=400,height=600');
-  w.document.write(`
-    <html>
-    <head>
-      <title>Чек оплаты</title>
-      <style>
-        body { font-family: monospace; width: 300px; padding: 10px; }
-        .center { text-align: center; }
-        .line { border-bottom: 1px dashed #000; margin: 10px 0; }
-        .row { display: flex; justify-content: space-between; margin: 5px 0; }
-      </style>
-    </head>
-    <body>
-      <div class="center">
-        <h2>${hostel.name}</h2>
-        <p>${hostel.address}</p>
-      </div>
-      <div class="line"></div>
-      <div class="row"><span>Дата:</span><span>${new Date().toLocaleString('ru-RU')}</span></div>
-      <div class="row"><span>Гость:</span><span>${guest.fullName || guest.name}</span></div>
-      <div class="row"><span>Паспорт:</span><span>${guest.passport || guest.passportNumber}</span></div>
-      <div class="line"></div>
-      <div class="row"><span>Комната:</span><span>${guest.roomNumber || guest.room?.number}</span></div>
-      <div class="row"><span>Место:</span><span>${guest.bedId || 'Н/Д'}</span></div>
-      <div class="row"><span>Дней:</span><span>${guest.days}</span></div>
-      <div class="row"><span>Цена/ночь:</span><span>${(parseFloat(guest.pricePerNight) || 0).toLocaleString()}</span></div>
-      <div class="line"></div>
-      <div class="row"><b>ИТОГО:</b><b>${(parseFloat(guest.totalPrice) || 0).toLocaleString()}</b></div>
-      <div class="row"><span>Оплачено:</span><span>${getTotalPaid(guest).toLocaleString()}</span></div>
-      <div class="line"></div>
-      <div class="center"><small>Спасибо!</small></div>
-    </body>
-    </html>
-  `);
-  w.document.close();
-  w.print();
+  try {
+    const w = window.open('', '', 'width=400,height=600');
+    
+    if (!w) {
+      // Popup blocked - show error message
+      console.error('❌ Print window blocked by browser. Please allow popups.');
+      alert('Не удалось открыть окно печати. Пожалуйста, разрешите всплывающие окна для этого сайта.');
+      return false;
+    }
+    
+    w.document.write(`
+      <html>
+      <head>
+        <title>Чек оплаты</title>
+        <style>
+          body { font-family: monospace; width: 300px; padding: 10px; }
+          .center { text-align: center; }
+          .line { border-bottom: 1px dashed #000; margin: 10px 0; }
+          .row { display: flex; justify-content: space-between; margin: 5px 0; }
+          @media print {
+            body { margin: 0; padding: 10px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="center">
+          <h2>${hostel.name}</h2>
+          <p>${hostel.address}</p>
+        </div>
+        <div class="line"></div>
+        <div class="row"><span>Дата:</span><span>${new Date().toLocaleString('ru-RU')}</span></div>
+        <div class="row"><span>Гость:</span><span>${guest.fullName || guest.name}</span></div>
+        <div class="row"><span>Паспорт:</span><span>${guest.passport || guest.passportNumber}</span></div>
+        <div class="line"></div>
+        <div class="row"><span>Комната:</span><span>${guest.roomNumber || guest.room?.number}</span></div>
+        <div class="row"><span>Место:</span><span>${guest.bedId || 'Н/Д'}</span></div>
+        <div class="row"><span>Дней:</span><span>${guest.days}</span></div>
+        <div class="row"><span>Цена/ночь:</span><span>${(parseFloat(guest.pricePerNight) || 0).toLocaleString()}</span></div>
+        <div class="line"></div>
+        <div class="row"><b>ИТОГО:</b><b>${(parseFloat(guest.totalPrice) || 0).toLocaleString()}</b></div>
+        <div class="row"><span>Оплачено:</span><span>${getTotalPaid(guest).toLocaleString()}</span></div>
+        <div class="line"></div>
+        <div class="center"><small>Спасибо!</small></div>
+      </body>
+      </html>
+    `);
+    w.document.close();
+    
+    // Try to print automatically
+    setTimeout(() => {
+      try {
+        w.print();
+        console.log('✅ Print check triggered successfully');
+      } catch (printError) {
+        console.error('❌ Auto-print failed:', printError);
+        alert('Автоматическая печать не удалась. Пожалуйста, используйте Ctrl+P в открывшемся окне.');
+      }
+    }, 250);
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error in printCheck:', error);
+    alert('Ошибка при печати чека: ' + error.message);
+    return false;
+  }
 };
 
-// Print registration form
+// FIX ISSUE #6: Print registration form with error handling
 export const printRegistrationForm = (guest, hostel) => {
-  const w = window.open('', '', 'width=800,height=600');
-  w.document.write(`
-    <html>
-    <head>
-      <title>Регистрационная анкета</title>
-      <style>
-        body { font-family: Arial; padding: 40px; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .field { margin: 15px 0; border-bottom: 1px solid #000; padding: 5px 0; }
-        .label { font-weight: bold; display: inline-block; width: 200px; }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h2>РЕГИСТРАЦИОННАЯ АНКЕТА ГОСТЯ</h2>
-        <p>${hostel.name} • ${hostel.address}</p>
-      </div>
-      <div class="field"><span class="label">ФИО:</span> ${guest.fullName || guest.name}</div>
-      <div class="field"><span class="label">Паспорт:</span> ${guest.passport || guest.passportNumber}</div>
-      <div class="field"><span class="label">Дата рождения:</span> ${guest.birthDate || 'Н/Д'}</div>
-      <div class="field"><span class="label">Гражданство:</span> ${guest.country}</div>
-      <div class="field"><span class="label">Комната:</span> ${guest.roomNumber || guest.room?.number}</div>
-      <div class="field"><span class="label">Дата заселения:</span> ${new Date(guest.checkInDate).toLocaleDateString('ru-RU')}</div>
-      <div class="field"><span class="label">Дата выселения:</span> ${new Date(guest.checkOutDate).toLocaleDateString('ru-RU')}</div>
-      <div class="field"><span class="label">Подпись:</span> ________________</div>
-    </body>
-    </html>
-  `);
-  w.document.close();
-  w.print();
+  try {
+    const w = window.open('', '', 'width=800,height=600');
+    
+    if (!w) {
+      console.error('❌ Print window blocked by browser');
+      alert('Не удалось открыть окно печати. Пожалуйста, разрешите всплывающие окна для этого сайта.');
+      return false;
+    }
+    
+    w.document.write(`
+      <html>
+      <head>
+        <title>Регистрационная анкета</title>
+        <style>
+          body { font-family: Arial; padding: 40px; }
+          .header { text-align: center; margin-bottom: 30px; }
+          .field { margin: 15px 0; border-bottom: 1px solid #000; padding: 5px 0; }
+          .label { font-weight: bold; display: inline-block; width: 200px; }
+          @media print {
+            body { margin: 0; padding: 40px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>РЕГИСТРАЦИОННАЯ АНКЕТА ГОСТЯ</h2>
+          <p>${hostel.name} • ${hostel.address}</p>
+        </div>
+        <div class="field"><span class="label">ФИО:</span> ${guest.fullName || guest.name}</div>
+        <div class="field"><span class="label">Паспорт:</span> ${guest.passport || guest.passportNumber}</div>
+        <div class="field"><span class="label">Дата рождения:</span> ${guest.birthDate || 'Н/Д'}</div>
+        <div class="field"><span class="label">Гражданство:</span> ${guest.country}</div>
+        <div class="field"><span class="label">Комната:</span> ${guest.roomNumber || guest.room?.number}</div>
+        <div class="field"><span class="label">Дата заселения:</span> ${new Date(guest.checkInDate).toLocaleDateString('ru-RU')}</div>
+        <div class="field"><span class="label">Дата выселения:</span> ${new Date(guest.checkOutDate).toLocaleDateString('ru-RU')}</div>
+        <div class="field"><span class="label">Подпись:</span> ________________</div>
+      </body>
+      </html>
+    `);
+    w.document.close();
+    
+    setTimeout(() => {
+      try {
+        w.print();
+        console.log('✅ Print registration form triggered successfully');
+      } catch (printError) {
+        console.error('❌ Auto-print failed:', printError);
+        alert('Автоматическая печать не удалась. Пожалуйста, используйте Ctrl+P в открывшемся окне.');
+      }
+    }, 250);
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error in printRegistrationForm:', error);
+    alert('Ошибка при печати анкеты: ' + error.message);
+    return false;
+  }
 };
 
-// Print reference certificate
+// FIX ISSUE #6: Print reference certificate with error handling
 export const printReference = (guest, hostel) => {
-  const w = window.open('', '', 'width=800,height=600');
-  w.document.write(`
-    <html>
-    <head>
-      <title>Справка</title>
-      <style>
-        body { font-family: 'Times New Roman'; padding: 60px; line-height: 1.8; }
-        .header { text-align: center; margin-bottom: 40px; }
-        .content { text-indent: 40px; text-align: justify; }
-        .signature { margin-top: 60px; display: flex; justify-content: space-between; }
-      </style>
-    </head>
-    <body>
-      <div class="header">
-        <h2>СПРАВКА</h2>
-        <p>о проживании в ${hostel.name}</p>
-      </div>
-      <div class="content">
-        <p>Настоящая справка выдана ${guest.fullName || guest.name}, паспорт ${guest.passport || guest.passportNumber}, 
-        в том, что он(а) проживал(а) в ${hostel.name} по адресу: ${hostel.address}, 
-        в период с ${new Date(guest.checkInDate).toLocaleDateString('ru-RU')} по 
-        ${new Date(guest.checkOutDate).toLocaleDateString('ru-RU')}.</p>
-      </div>
-      <div class="signature">
-        <div>Дата: ${new Date().toLocaleDateString('ru-RU')}</div>
-        <div>Подпись: ________________</div>
-      </div>
-    </body>
-    </html>
-  `);
-  w.document.close();
-  w.print();
+  try {
+    const w = window.open('', '', 'width=800,height=600');
+    
+    if (!w) {
+      console.error('❌ Print window blocked by browser');
+      alert('Не удалось открыть окно печати. Пожалуйста, разрешите всплывающие окна для этого сайта.');
+      return false;
+    }
+    
+    w.document.write(`
+      <html>
+      <head>
+        <title>Справка</title>
+        <style>
+          body { font-family: 'Times New Roman'; padding: 60px; line-height: 1.8; }
+          .header { text-align: center; margin-bottom: 40px; }
+          .content { text-indent: 40px; text-align: justify; }
+          .signature { margin-top: 60px; display: flex; justify-content: space-between; }
+          @media print {
+            body { margin: 0; padding: 60px; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>СПРАВКА</h2>
+          <p>о проживании в ${hostel.name}</p>
+        </div>
+        <div class="content">
+          <p>Настоящая справка выдана ${guest.fullName || guest.name}, паспорт ${guest.passport || guest.passportNumber}, 
+          в том, что он(а) проживал(а) в ${hostel.name} по адресу: ${hostel.address}, 
+          в период с ${new Date(guest.checkInDate).toLocaleDateString('ru-RU')} по 
+          ${new Date(guest.checkOutDate).toLocaleDateString('ru-RU')}.</p>
+        </div>
+        <div class="signature">
+          <div>Дата: ${new Date().toLocaleDateString('ru-RU')}</div>
+          <div>Подпись: ________________</div>
+        </div>
+      </body>
+      </html>
+    `);
+    w.document.close();
+    
+    setTimeout(() => {
+      try {
+        w.print();
+        console.log('✅ Print reference triggered successfully');
+      } catch (printError) {
+        console.error('❌ Auto-print failed:', printError);
+        alert('Автоматическая печать не удалась. Пожалуйста, используйте Ctrl+P в открывшемся окне.');
+      }
+    }, 250);
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Error in printReference:', error);
+    alert('Ошибка при печати справки: ' + error.message);
+    return false;
+  }
 };
 
-// Export data to Excel
+// FIX ISSUE #5: Export data to Excel with proper encoding and error handling
 export const exportToExcel = (data, filename, totalIncome = 0, totalExpense = 0) => {
-  const balance = totalIncome - totalExpense;
-  
-  let html = `
-    <html xmlns:o="urn:schemas-microsoft-com:office:office">
-    <head>
-      <meta charset="UTF-8">
-      <style>
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #000; padding: 8px; }
-        th { background-color: #4f46e5; color: white; }
-        .total { background-color: #f3f4f6; font-weight: bold; }
-      </style>
-    </head>
-    <body>
-      <table>
-        <thead>
-          <tr>
-            <th>Дата</th><th>Тип</th><th>Хостел</th><th>Кассир</th>
-            <th>Сумма</th><th>Метод</th><th>Описание</th>
-          </tr>
-        </thead>
-        <tbody>
-  `;
-  
-  data.forEach(row => {
-    const amount = parseFloat(row.amount) || 0;
-    html += `
-      <tr>
-        <td>${row.date}</td>
-        <td>${row.type === 'income' ? 'Приход' : 'Расход'}</td>
-        <td>${row.hostel}</td>
-        <td>${row.staff}</td>
-        <td>${amount.toLocaleString()}</td>
-        <td>${row.method}</td>
-        <td>${row.comment || row.description || ''}</td>
-      </tr>
+  try {
+    const balance = totalIncome - totalExpense;
+    
+    // Add UTF-8 BOM for proper encoding
+    const BOM = '\uFEFF';
+    
+    let html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:x="urn:schemas-microsoft-com:office:excel"
+            xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="ProgId" content="Excel.Sheet">
+        <meta name="Generator" content="Microsoft Excel 15">
+        <style>
+          table { border-collapse: collapse; width: 100%; }
+          th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+          th { background-color: #4f46e5; color: white; font-weight: bold; }
+          .total { background-color: #f3f4f6; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <thead>
+            <tr>
+              <th>Дата</th><th>Тип</th><th>Хостел</th><th>Кассир</th>
+              <th>Сумма</th><th>Метод</th><th>Описание</th>
+            </tr>
+          </thead>
+          <tbody>
     `;
-  });
-  
-  html += `
-          <tr class="total">
-            <td colspan="4">ИТОГО ПРИХОД:</td>
-            <td>${totalIncome.toLocaleString()}</td>
-            <td colspan="2"></td>
-          </tr>
-          <tr class="total">
-            <td colspan="4">ИТОГО РАСХОД:</td>
-            <td>${totalExpense.toLocaleString()}</td>
-            <td colspan="2"></td>
-          </tr>
-          <tr class="total">
-            <td colspan="4">БАЛАНС:</td>
-            <td style="color: ${balance >= 0 ? 'green' : 'red'};">${balance.toLocaleString()}</td>
-            <td colspan="2"></td>
-          </tr>
-        </tbody>
-      </table>
-    </body>
-    </html>
-  `;
-  
-  const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  link.click();
+    
+    data.forEach(row => {
+      const amount = parseFloat(row.amount) || 0;
+      // Escape HTML special characters
+      const escapeHtml = (text) => {
+        if (!text) return '';
+        return String(text)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      };
+      
+      html += `
+        <tr>
+          <td>${escapeHtml(row.date)}</td>
+          <td>${row.type === 'income' ? 'Приход' : 'Расход'}</td>
+          <td>${escapeHtml(row.hostel)}</td>
+          <td>${escapeHtml(row.staff)}</td>
+          <td>${amount.toLocaleString()}</td>
+          <td>${escapeHtml(row.method)}</td>
+          <td>${escapeHtml(row.comment || row.description || '')}</td>
+        </tr>
+      `;
+    });
+    
+    html += `
+            <tr class="total">
+              <td colspan="4">ИТОГО ПРИХОД:</td>
+              <td>${totalIncome.toLocaleString()}</td>
+              <td colspan="2"></td>
+            </tr>
+            <tr class="total">
+              <td colspan="4">ИТОГО РАСХОД:</td>
+              <td>${totalExpense.toLocaleString()}</td>
+              <td colspan="2"></td>
+            </tr>
+            <tr class="total">
+              <td colspan="4">БАЛАНС:</td>
+              <td style="color: ${balance >= 0 ? 'green' : 'red'};">${balance.toLocaleString()}</td>
+              <td colspan="2"></td>
+            </tr>
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+    
+    // Create blob with UTF-8 BOM and correct MIME type
+    const blob = new Blob([BOM + html], { 
+      type: 'application/vnd.ms-excel;charset=utf-8;' 
+    });
+    
+    // Create download link
+    const link = document.createElement("a");
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      console.log(`✅ Excel exported successfully: ${filename}`);
+    } else {
+      throw new Error('Browser does not support download attribute');
+    }
+  } catch (error) {
+    console.error('❌ Error exporting to Excel:', error);
+    throw error;
+  }
 };

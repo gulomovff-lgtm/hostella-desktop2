@@ -10,12 +10,54 @@ export const TG_CHAT_IDS = ["7029598539", "6953132612"];
 export const DAILY_SALARY = 266666;
 
 // Default Users
+// FIX ISSUE #4: Added viewHostels and editHostels fields for multi-hostel access control
 export const DEFAULT_USERS = [
-  { login: 'admin', pass: 'admin', name: 'Aziz Yuldashev', role: 'admin', hostelId: 'all' },
-  { login: 'dilafruz', pass: '123', name: 'Dilafruz', role: 'cashier', hostelId: 'hostel1' },
-  { login: 'nargiza', pass: '123', name: 'Nargiza', role: 'cashier', hostelId: 'hostel1' },
-  { login: 'fazliddin', pass: '123', name: 'Fazliddin', role: 'cashier', hostelId: 'hostel2', canViewAll: true },
-  { login: 'olimjon', pass: '123', name: 'Olimjon', role: 'cashier', hostelId: 'hostel2' },
+  { 
+    login: 'admin', 
+    pass: 'admin', 
+    name: 'Aziz Yuldashev', 
+    role: 'admin', 
+    hostelId: 'all',
+    viewHostels: ['hostel1', 'hostel2'],
+    editHostels: ['hostel1', 'hostel2']
+  },
+  { 
+    login: 'dilafruz', 
+    pass: '123', 
+    name: 'Dilafruz', 
+    role: 'cashier', 
+    hostelId: 'hostel1',
+    viewHostels: ['hostel1'],
+    editHostels: ['hostel1']
+  },
+  { 
+    login: 'nargiza', 
+    pass: '123', 
+    name: 'Nargiza', 
+    role: 'cashier', 
+    hostelId: 'hostel1',
+    viewHostels: ['hostel1'],
+    editHostels: ['hostel1']
+  },
+  { 
+    login: 'fazliddin', 
+    pass: '123', 
+    name: 'Fazliddin', 
+    role: 'cashier', 
+    hostelId: 'hostel2',
+    // FIX ISSUE #4: Fazliddin can VIEW both hostels but only EDIT hostel2
+    viewHostels: ['hostel1', 'hostel2'],
+    editHostels: ['hostel2']
+  },
+  { 
+    login: 'olimjon', 
+    pass: '123', 
+    name: 'Olimjon', 
+    role: 'cashier', 
+    hostelId: 'hostel2',
+    viewHostels: ['hostel2'],
+    editHostels: ['hostel2']
+  },
 ];
 
 // Hostels

@@ -151,23 +151,38 @@ function App() {
     setNotification({ ...notification, show: false });
   };
 
-  // Permission Helpers
+  // FIX ISSUE #4: Permission Helpers with viewHostels/editHostels support
   const canViewHostel = (hostelId) => {
-    if (user?.role === 'admin') return true;
-    if (user?.login === 'fazliddin') return true; // Can view all hostels
-    return user?.hostelId === hostelId;
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    // Use viewHostels array if available, otherwise fall back to hostelId
+    const viewHostels = user.viewHostels || [user.hostelId];
+    return viewHostels.includes(hostelId);
   };
 
   const canModifyHostel = (hostelId) => {
-    if (user?.role === 'admin') return true;
-    if (user?.login === 'fazliddin' && hostelId === 'hostel2') return true; // Can only modify hostel2
-    return user?.hostelId === hostelId && user?.role === 'cashier';
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    // Use editHostels array if available, otherwise fall back to hostelId
+    const editHostels = user.editHostels || [user.hostelId];
+    return editHostels.includes(hostelId);
   };
 
-  // Hostel Change Handler
+  // FIX ISSUE #4: Check if current user is in read-only mode for current hostel
+  const isReadOnly = () => {
+    return !canModifyHostel(viewHostel);
+  };
+
+  // FIX ISSUE #4: Hostel Change Handler with permission check
   const handleHostelChange = (hostelId) => {
+    if (!canViewHostel(hostelId)) {
+      showNotification('У вас нет доступа к этому хостелу', 'error');
+      return;
+    }
     setViewHostel(hostelId);
-    showNotification(`Переключено на ${hostelId === 'hostel1' ? 'Хостел №1' : 'Хостел №2'}`, 'info');
+    const hostelName = HOSTELS[hostelId]?.name || hostelId;
+    const readOnlyMsg = !canModifyHostel(hostelId) ? ' (только просмотр)' : '';
+    showNotification(`Переключено на ${hostelName}${readOnlyMsg}`, 'info');
   };
 
   // Tab Change Handler
@@ -188,11 +203,24 @@ function App() {
     const paidAmount = parseFloat(guest.paidAmount) || 0;
     const balance = totalPrice - paidAmount;
     
-    // Block checkout if guest has debt (balance > 0 means they owe money)
-    // Allow checkout when balance <= 0 (fully paid or overpaid)
-    if (balance > 0) {
+    // Check if stay has expired (current date > checkOutDate)
+    const checkOutDate = new Date(guest.checkOutDate);
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    checkOutDate.setHours(0, 0, 0, 0);
+    const isExpired = currentDate >= checkOutDate;
+    
+    // FIX ISSUE #1: Allow checkout if debt <= 0 OR if stay has expired (admin can checkout expired guests)
+    // Block checkout only if guest has debt AND stay hasn't expired yet
+    if (balance > 0 && !isExpired) {
       showNotification(`Ошибка! Долг: ${balance.toLocaleString()}. Невозможно выселить.`, 'error');
       return;
+    }
+    
+    // If guest has debt but stay expired, allow checkout (debt will remain in system)
+    if (balance > 0 && isExpired) {
+      showNotification(`Внимание! Выселение с долгом ${balance.toLocaleString()}. Долг будет зафиксирован.`, 'warning');
+      // Debt will be recorded in debts collection
     }
     
     // Calculate refund: use provided amount or calculate from overpayment
@@ -511,6 +539,7 @@ function App() {
           onLogout={handleLogout}
           viewHostel={viewHostel}
           onHostelChange={handleHostelChange}
+          canModifyHostel={canModifyHostel} // FIX ISSUE #4: Pass permission check function
         />
       </div>
 

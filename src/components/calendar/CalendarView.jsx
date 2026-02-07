@@ -50,14 +50,19 @@ const CalendarView = ({ bookings = [], rooms = [], onGuestClick }) => {
   };
   
   // Calculate guest block position and width
+  // FIX ISSUE #2: Use actual checkOutDate from DB, not extended dates
   const getGuestBlockStyle = (guest) => {
     const checkIn = new Date(guest.checkInDate || guest.checkInDateTime || guest.checkIn);
     checkIn.setHours(12, 0, 0, 0);
     
+    // FIX ISSUE #2: Always use the actual checkOutDate from database
+    // This ensures that when a guest is checked out with refund (shortened stay),
+    // the calendar block ends at the actual checkout date, not the original planned date
     const checkOut = new Date(guest.checkOutDate);
     checkOut.setHours(12, 0, 0, 0);
     
-    // For checked_out guests, DON'T extend to current date
+    // FIX ISSUE #2: For checked_out guests, use their actual checkout date from DB
+    // The block should NOT extend to current date for old checked-out guests
     const calendarStart = new Date(days[0].str);
     calendarStart.setHours(12, 0, 0, 0);
     const calendarEnd = new Date(days[days.length - 1].str);
@@ -66,7 +71,7 @@ const CalendarView = ({ bookings = [], rooms = [], onGuestClick }) => {
     // Check if guest is visible in current calendar range
     if (checkOut < calendarStart || checkIn > calendarEnd) return null;
     
-    // Calculate position and width
+    // Calculate position and width based on actual dates from database
     const msPerDay = 1000 * 60 * 60 * 24;
     const totalCalendarMs = msPerDay * viewDays;
     
