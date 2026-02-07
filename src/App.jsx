@@ -11,12 +11,13 @@ import MobileNavigation from './components/layout/MobileNavigation';
 // UI Components
 import Notification from './components/ui/Notification';
 
-// Dashboard Components
-import DashboardStats from './components/dashboard/DashboardStats';
-import ChartsSection from './components/dashboard/ChartsSection';
+// View Components
+import DashboardView from './components/Views/DashboardView';
+import RoomsView from './components/Views/RoomsView';
+import ExpensesView from './components/Views/ExpensesView';
+import TasksView from './components/Views/TasksView';
 
 // Room Components
-import RoomCardChess from './components/rooms/RoomCardChess';
 import RoomFormModal from './components/rooms/RoomFormModal';
 
 // Calendar Components
@@ -41,7 +42,7 @@ import CreateDebtModal from './components/debts/CreateDebtModal';
 import ReportsView from './components/reports/ReportsView';
 
 // Task Components
-import TaskManager from './components/tasks/TaskManager';
+// (Now using TasksView which wraps TaskManager)
 
 // Shift Components
 import ShiftsView from './components/shifts/ShiftsView';
@@ -282,45 +283,29 @@ function App() {
         <div className="container mx-auto p-6">
           {/* Dashboard */}
           {currentTab === 'dashboard' && (
-            <>
-              <DashboardStats
-                stats={{
-                  totalRooms: rooms.length,
-                  occupiedRooms: rooms.filter(r => r.status === 'occupied').length,
-                  availableRooms: rooms.filter(r => r.status === 'available').length,
-                  totalGuests: guests.length,
-                  todayCheckIns: 0,
-                  todayCheckOuts: 0,
-                  totalRevenue: 0,
-                  pendingDebts: debts.reduce((sum, d) => sum + d.amount, 0),
-                }}
-              />
-              <ChartsSection revenueData={[]} occupancyData={[]} />
-            </>
+            <DashboardView
+              stats={{
+                totalRooms: rooms.length,
+                occupiedRooms: rooms.filter(r => r.status === 'occupied').length,
+                availableRooms: rooms.filter(r => r.status === 'available').length,
+                totalGuests: guests.length,
+                todayCheckIns: 0,
+                todayCheckOuts: 0,
+                totalRevenue: 0,
+                pendingDebts: debts.reduce((sum, d) => sum + d.amount, 0),
+              }}
+              revenueData={[]}
+              occupancyData={[]}
+            />
           )}
 
           {/* Rooms */}
           {currentTab === 'rooms' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-slate-800">Комнаты</h2>
-                <button
-                  onClick={() => setRoomFormModalOpen(true)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
-                >
-                  + Добавить комнату
-                </button>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {rooms.map(room => (
-                  <RoomCardChess
-                    key={room.id}
-                    room={room}
-                    onClick={() => setSelectedRoom(room)}
-                  />
-                ))}
-              </div>
-            </div>
+            <RoomsView
+              rooms={rooms}
+              onRoomClick={(room) => setSelectedRoom(room)}
+              onAddRoom={() => setRoomFormModalOpen(true)}
+            />
           )}
 
           {/* Calendar */}
@@ -372,7 +357,7 @@ function App() {
 
           {/* Tasks */}
           {currentTab === 'tasks' && (
-            <TaskManager
+            <TasksView
               tasks={tasks}
               onAddTask={handleAddTask}
               onToggleTask={handleToggleTask}
@@ -392,18 +377,10 @@ function App() {
 
           {/* Expenses */}
           {currentTab === 'expenses' && user?.role === 'admin' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-slate-800">Расходы</h2>
-                <button
-                  onClick={() => setExpenseModalOpen(true)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
-                >
-                  + Добавить расход
-                </button>
-              </div>
-              {/* Expenses list would go here */}
-            </div>
+            <ExpensesView
+              expenses={expenses}
+              onAddExpense={() => setExpenseModalOpen(true)}
+            />
           )}
 
           {/* Staff */}
