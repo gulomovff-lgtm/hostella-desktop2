@@ -4,7 +4,7 @@ import Button from '../ui/Button';
 import { inputClass, labelClass } from '../../config/constants';
 import { formatCurrency, getCurrentDate } from '../../utils/helpers';
 
-const ReportsView = ({ onGenerateReport }) => {
+const ReportsView = ({ onGenerateReport, onExportExcel }) => {
   const [dateRange, setDateRange] = useState({
     startDate: getCurrentDate(),
     endDate: getCurrentDate(),
@@ -14,6 +14,22 @@ const ReportsView = ({ onGenerateReport }) => {
   const handleGenerate = () => {
     const data = onGenerateReport?.(dateRange);
     setReportData(data);
+  };
+  
+  const handleExport = () => {
+    if (!reportData) {
+      alert('Сначала сгенерируйте отчет');
+      return;
+    }
+    
+    // Sample data for export
+    const exportData = [
+      { Дата: dateRange.startDate, Тип: 'Приход', Описание: 'Оплата проживания', Сумма: reportData.revenue },
+      { Дата: dateRange.endDate, Тип: 'Расход', Описание: 'Коммунальные услуги', Сумма: reportData.expenses },
+    ];
+    
+    const filename = `Отчет_${dateRange.startDate}_${dateRange.endDate}.xls`;
+    onExportExcel?.(exportData, filename, reportData.revenue, reportData.expenses);
   };
   
   return (
@@ -35,17 +51,23 @@ const ReportsView = ({ onGenerateReport }) => {
       </Card>
       
       {reportData && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card title="Доход">
-            <p className="text-3xl font-bold text-green-600">{formatCurrency(reportData.revenue || 0)}</p>
-          </Card>
-          <Card title="Расходы">
-            <p className="text-3xl font-bold text-red-600">{formatCurrency(reportData.expenses || 0)}</p>
-          </Card>
-          <Card title="Прибыль">
-            <p className="text-3xl font-bold text-blue-600">{formatCurrency((reportData.revenue || 0) - (reportData.expenses || 0))}</p>
-          </Card>
-        </div>
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card title="Доход">
+              <p className="text-3xl font-bold text-green-600">{formatCurrency(reportData.revenue || 0)}</p>
+            </Card>
+            <Card title="Расходы">
+              <p className="text-3xl font-bold text-red-600">{formatCurrency(reportData.expenses || 0)}</p>
+            </Card>
+            <Card title="Прибыль">
+              <p className="text-3xl font-bold text-blue-600">{formatCurrency((reportData.revenue || 0) - (reportData.expenses || 0))}</p>
+            </Card>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button onClick={handleExport}>📊 Экспортировать в Excel</Button>
+          </div>
+        </>
       )}
       
       {!reportData && (

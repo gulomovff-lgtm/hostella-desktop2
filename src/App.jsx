@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from './config/firebase';
-import { DEFAULT_USERS } from './config/constants';
+import { DEFAULT_USERS, HOSTELS } from './config/constants';
 import { sendTelegramMessage } from './utils/telegram';
 
 // Layout Components
@@ -103,6 +103,9 @@ function App() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [selectedClient, setSelectedClient] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState(null);
+  
+  // Hostel view for Fazliddin
+  const [viewHostel, setViewHostel] = useState(user?.hostelId || 'hostel1');
 
   // Authentication Handlers
   const handleLogin = async (login, password) => {
@@ -138,6 +141,27 @@ function App() {
 
   const closeNotification = () => {
     setNotification({ ...notification, show: false });
+  };
+
+  // Permission Helpers
+  const canViewHostel = (hostelId) => {
+    if (user?.role === 'super') return true;
+    if (user?.role === 'admin') return true;
+    if (user?.login === 'fazliddin') return true; // Can view all hostels
+    return user?.hostelId === hostelId;
+  };
+
+  const canModifyHostel = (hostelId) => {
+    if (user?.role === 'super') return true;
+    if (user?.role === 'admin') return true;
+    if (user?.login === 'fazliddin' && hostelId === 'hostel2') return true; // Can only modify hostel2
+    return user?.hostelId === hostelId && user?.role === 'cashier';
+  };
+
+  // Hostel Change Handler
+  const handleHostelChange = (hostelId) => {
+    setViewHostel(hostelId);
+    showNotification(`Переключено на ${hostelId === 'hostel1' ? 'Хостел №1' : 'Хостел №2'}`, 'info');
   };
 
   // Tab Change Handler
@@ -250,13 +274,203 @@ function App() {
     showNotification('Пароль изменен', 'success');
   };
 
+  // Excel Export Function
+  const exportToExcel = (data, filename, totalIncome = 0, totalExpense = 0) => {
+    const balance = totalIncome - totalExpense;
+    let tableContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+            xmlns:x="urn:schemas-microsoft-com:office:excel">
+      <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <style>
+          table { border-collapse: collapse; width: 100%; }
+          th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+          th { background-color: #4f46e5; color: #fff; font-weight: bold; }
+          .total-row { background-color: #f3f4f6; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <thead>
+            <tr>`;
+    
+    // Add headers
+    if (data.length > 0) {
+      Object.keys(data[0]).forEach(key => {
+        tableContent += `<th>${key}</th>`;
+      });
+      tableContent += `</tr></thead><tbody>`;
+      
+      // Add data rows
+      data.forEach(row => {
+        tableContent += `<tr>`;
+        Object.values(row).forEach(value => {
+          tableContent += `<td>${value}</td>`;
+        });
+        tableContent += `</tr>`;
+      });
+    }
+    
+    // Add totals if provided
+    if (totalIncome || totalExpense) {
+      const colCount = data.length > 0 ? Object.keys(data[0]).length : 5;
+      tableContent += `
+        <tr class="total-row">
+          <td colspan="${colCount - 1}">ИТОГО ПРИХОД:</td>
+          <td>${totalIncome.toLocaleString()}</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="${colCount - 1}">ИТОГО РАСХОД:</td>
+          <td>${totalExpense.toLocaleString()}</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="${colCount - 1}">БАЛАНС:</td>
+          <td>${balance.toLocaleString()}</td>
+        </tr>`;
+    }
+    
+    tableContent += `</tbody></table></body></html>`;
+    
+    const blob = new Blob([tableContent], { type: 'application/vnd.ms-excel' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    showNotification('Отчет экспортирован', 'success');
+  };
+
+  // Print Functions
+  const printCheck = (guest, hostel) => {
+    const w = window.open('', '', 'width=400,height=600');
+    const getTotalPaid = (g) => g.paidAmount || 0;
+    
+    w.document.write(`
+      <html>
+      <head>
+        <title>Чек оплаты</title>
+        <style>
+          body { font-family: monospace; width: 300px; padding: 10px; }
+          .center { text-align: center; }
+          .line { border-bottom: 1px dashed #000; margin: 10px 0; }
+          .row { display: flex; justify-content: space-between; margin: 5px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="center">
+          <h2>${hostel.name}</h2>
+          <p>${hostel.address}</p>
+        </div>
+        <div class="line"></div>
+        <div class="row"><span>Дата:</span><span>${new Date().toLocaleString()}</span></div>
+        <div class="row"><span>Гость:</span><span>${guest.name}</span></div>
+        <div class="row"><span>Паспорт:</span><span>${guest.passportNumber || 'Н/Д'}</span></div>
+        <div class="line"></div>
+        <div class="row"><span>Комната:</span><span>${guest.room?.number || 'Н/Д'}</span></div>
+        <div class="row"><span>Дней:</span><span>${guest.days || 'Н/Д'}</span></div>
+        <div class="row"><span>Цена/ночь:</span><span>${guest.pricePerNight || 0}</span></div>
+        <div class="line"></div>
+        <div class="row"><b>ИТОГО:</b><b>${guest.totalPrice || 0}</b></div>
+        <div class="row"><span>Оплачено:</span><span>${getTotalPaid(guest)}</span></div>
+        <div class="row"><span>Долг:</span><span>${(guest.totalPrice || 0) - getTotalPaid(guest)}</span></div>
+        <div class="line"></div>
+        <div class="center"><small>Спасибо за визит!</small></div>
+      </body>
+      </html>
+    `);
+    w.document.close();
+    w.print();
+  };
+
+  const printRegistrationForm = (guest, hostel) => {
+    const w = window.open('', '', 'width=800,height=600');
+    w.document.write(`
+      <html>
+      <head>
+        <title>Регистрационная анкета</title>
+        <style>
+          body { font-family: Arial; padding: 40px; }
+          .header { text-align: center; margin-bottom: 30px; }
+          .field { margin: 15px 0; border-bottom: 1px solid #000; padding: 5px 0; }
+          .label { font-weight: bold; display: inline-block; width: 200px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>РЕГИСТРАЦИОННАЯ АНКЕТА ГОСТЯ</h2>
+          <p>${hostel.name} • ${hostel.address}</p>
+        </div>
+        <div class="field"><span class="label">ФИО:</span> ${guest.name}</div>
+        <div class="field"><span class="label">Паспорт:</span> ${guest.passportNumber || 'Н/Д'}</div>
+        <div class="field"><span class="label">Дата рождения:</span> ${guest.birthDate || 'Н/Д'}</div>
+        <div class="field"><span class="label">Гражданство:</span> ${guest.country || 'Н/Д'}</div>
+        <div class="field"><span class="label">Комната:</span> ${guest.room?.number || 'Н/Д'}</div>
+        <div class="field"><span class="label">Дата заселения:</span> ${new Date(guest.checkInDate).toLocaleDateString()}</div>
+        <div class="field"><span class="label">Дата выселения:</span> ${new Date(guest.checkOutDate).toLocaleDateString()}</div>
+        <div class="field"><span class="label">Подпись гостя:</span> ________________</div>
+      </body>
+      </html>
+    `);
+    w.document.close();
+    w.print();
+  };
+
+  const printReference = (guest, hostel) => {
+    const w = window.open('', '', 'width=800,height=600');
+    w.document.write(`
+      <html>
+      <head>
+        <title>Справка о проживании</title>
+        <style>
+          body { font-family: 'Times New Roman'; padding: 60px; line-height: 1.8; }
+          .header { text-align: center; margin-bottom: 40px; }
+          .content { text-indent: 40px; text-align: justify; }
+          .signature { margin-top: 60px; display: flex; justify-content: space-between; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>СПРАВКА</h2>
+          <p>о проживании в ${hostel.name}</p>
+        </div>
+        <div class="content">
+          <p>Настоящая справка выдана ${guest.name}, паспорт ${guest.passportNumber || 'Н/Д'}, 
+          гражданин(ка) ${guest.country || 'Н/Д'}, в том, что он(а) действительно проживал(а) 
+          в ${hostel.name} по адресу: ${hostel.address}, в период с 
+          ${new Date(guest.checkInDate).toLocaleDateString()} по 
+          ${new Date(guest.checkOutDate).toLocaleDateString()}.</p>
+          
+          <p>Справка выдана для предъявления по месту требования.</p>
+        </div>
+        <div class="signature">
+          <div>Дата: ${new Date().toLocaleDateString()}</div>
+          <div>Подпись: ________________</div>
+        </div>
+      </body>
+      </html>
+    `);
+    w.document.close();
+    w.print();
+  };
+
+  // Print Handler
+  const handlePrint = (type, guest, hostel) => {
+    if (type === 'check') printCheck(guest, hostel);
+    if (type === 'regcard') printRegistrationForm(guest, hostel);
+    if (type === 'reference') printReference(guest, hostel);
+  };
+
   // Report Handler
   const handleGenerateReport = (dateRange) => {
     // TODO: Implement report generation logic
-    return {
+    const reportData = {
       revenue: 1000000,
       expenses: 500000,
     };
+    
+    // Example of calling export
+    // exportToExcel(data, filename, totalIncome, totalExpense)
+    
+    return reportData;
   };
 
   // Render Login Screen if not authenticated
@@ -274,6 +488,8 @@ function App() {
           onTabChange={handleTabChange}
           user={user}
           onLogout={handleLogout}
+          viewHostel={viewHostel}
+          onHostelChange={handleHostelChange}
         />
       </div>
 
@@ -367,7 +583,10 @@ function App() {
 
           {/* Reports */}
           {currentTab === 'reports' && (
-            <ReportsView onGenerateReport={handleGenerateReport} />
+            <ReportsView 
+              onGenerateReport={handleGenerateReport}
+              onExportExcel={exportToExcel}
+            />
           )}
 
           {/* Tasks */}
@@ -450,6 +669,8 @@ function App() {
           setSelectedGuest(guest);
           setMoveGuestModalOpen(true);
         }}
+        onPrint={handlePrint}
+        hostelInfo={HOSTELS[viewHostel] || HOSTELS.hostel1}
       />
 
       <MoveGuestModal

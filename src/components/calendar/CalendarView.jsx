@@ -48,11 +48,21 @@ const CalendarView = ({ bookings = [], onDateClick }) => {
   }
   
   const getBookingsForDay = (day) => {
-    const dateStr = formatDateDisplay(new Date(year, month, day));
+    const currentDate = new Date(year, month, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     return bookings.filter(b => {
-      const checkIn = formatDateDisplay(b.checkInDate);
-      const checkOut = formatDateDisplay(b.checkOutDate);
-      return checkIn === dateStr || checkOut === dateStr;
+      const checkIn = new Date(b.checkInDate);
+      const checkOut = new Date(b.checkOutDate);
+      checkIn.setHours(0, 0, 0, 0);
+      checkOut.setHours(0, 0, 0, 0);
+      
+      // For checked out guests, use actual checkOutDate instead of extending to today
+      const endDate = b.status === 'checked-out' ? checkOut : 
+                      (checkOut < today ? checkOut : today);
+      
+      return currentDate >= checkIn && currentDate <= endDate;
     });
   };
   

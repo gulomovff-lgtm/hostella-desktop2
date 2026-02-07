@@ -10,8 +10,10 @@ import { formatDateDisplay, formatCurrency } from '../../utils/helpers';
  * @param {function} props.onClose - Close handler
  * @param {function} props.onCheckOut - Check-out handler
  * @param {function} props.onMove - Move guest handler
+ * @param {function} props.onPrint - Print handler (for check, regcard, reference)
+ * @param {Object} props.hostelInfo - Hostel information for printing
  */
-const GuestDetailsModal = ({ guest, isOpen, onClose, onCheckOut, onMove }) => {
+const GuestDetailsModal = ({ guest, isOpen, onClose, onCheckOut, onMove, onPrint, hostelInfo }) => {
   if (!isOpen || !guest) return null;
   
   const {
@@ -114,6 +116,24 @@ const GuestDetailsModal = ({ guest, isOpen, onClose, onCheckOut, onMove }) => {
             <div>
               <h3 className="text-lg font-bold text-slate-800 mb-2">Примечания</h3>
               <p className="text-sm text-slate-600 bg-slate-50 p-4 rounded-xl">{notes}</p>
+            </div>
+          )}
+          
+          {/* Print Options */}
+          {onPrint && hostelInfo && (
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 mb-4">Печать документов</h3>
+              <div className="grid grid-cols-3 gap-3">
+                <Button variant="outline" onClick={() => onPrint('check', guest, hostelInfo)}>
+                  🧾 Чек
+                </Button>
+                <Button variant="outline" onClick={() => onPrint('regcard', guest, hostelInfo)}>
+                  📋 Анкета
+                </Button>
+                <Button variant="outline" onClick={() => onPrint('reference', guest, hostelInfo)}>
+                  📄 Справка
+                </Button>
+              </div>
             </div>
           )}
           

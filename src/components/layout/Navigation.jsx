@@ -8,12 +8,16 @@ import NavItem from '../ui/NavItem';
  * @param {function} props.onTabChange - Tab change handler
  * @param {Object} props.user - Current user object
  * @param {function} props.onLogout - Logout handler
+ * @param {string} props.viewHostel - Current hostel view (for Fazliddin)
+ * @param {function} props.onHostelChange - Hostel change handler (for Fazliddin)
  */
 const Navigation = ({ 
   currentTab, 
   onTabChange, 
   user,
   onLogout,
+  viewHostel,
+  onHostelChange,
 }) => {
   const navItems = [
     { id: 'dashboard', label: 'Дашборд', icon: '📊' },
@@ -41,6 +45,32 @@ const Navigation = ({
         <h1 className="text-2xl font-bold text-indigo-600">Hostella</h1>
         {user && (
           <p className="text-sm text-slate-600 mt-2">{user.name}</p>
+        )}
+        
+        {/* Hostel Switcher for Fazliddin */}
+        {user?.login === 'fazliddin' && onHostelChange && (
+          <div className="mt-4 flex flex-col gap-2">
+            <button
+              onClick={() => onHostelChange('hostel1')}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                viewHostel === 'hostel1'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              Хостел №1 (Просмотр)
+            </button>
+            <button
+              onClick={() => onHostelChange('hostel2')}
+              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                viewHostel === 'hostel2'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              Хостел №2 (Работа)
+            </button>
+          </div>
         )}
       </div>
       
