@@ -219,10 +219,9 @@ function App() {
       return;
     }
     
-    // If guest has debt but stay expired, allow checkout (debt will remain in system)
+    // If guest has debt but stay expired, allow checkout (TODO: debt will be recorded in debts collection when Firebase is integrated)
     if (balance > 0 && isExpired) {
       showNotification(`Внимание! Выселение с долгом ${balance.toLocaleString()}. Долг будет зафиксирован.`, 'warning');
-      // Debt will be recorded in debts collection
     }
     
     // Calculate refund: use provided amount or calculate from overpayment
@@ -409,7 +408,7 @@ function App() {
                 {isReadOnly() && (
                   <div className="flex items-center gap-2 text-amber-600 text-sm font-medium">
                     <span>ℹ️</span>
-                    <span>Только просмотр. Изменения доступны только в хостелах, где у вас есть права редактирования.</span>
+                    <span>Только просмотр. Редактирование недоступно.</span>
                   </div>
                 )}
               </div>

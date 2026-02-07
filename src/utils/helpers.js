@@ -270,7 +270,6 @@ export const printCheck = (guest, hostel) => {
     
     if (!w) {
       // Popup blocked - show error message
-      console.error('❌ Print window blocked by browser. Please allow popups.');
       alert('Не удалось открыть окно печати. Пожалуйста, разрешите всплывающие окна для этого сайта.');
       return false;
     }
@@ -338,7 +337,6 @@ export const printRegistrationForm = (guest, hostel) => {
     const w = window.open('', '', 'width=800,height=600');
     
     if (!w) {
-      console.error('❌ Print window blocked by browser');
       alert('Не удалось открыть окно печати. Пожалуйста, разрешите всплывающие окна для этого сайта.');
       return false;
     }
@@ -399,7 +397,6 @@ export const printReference = (guest, hostel) => {
     const w = window.open('', '', 'width=800,height=600');
     
     if (!w) {
-      console.error('❌ Print window blocked by browser');
       alert('Не удалось открыть окно печати. Пожалуйста, разрешите всплывающие окна для этого сайта.');
       return false;
     }
@@ -464,6 +461,17 @@ export const exportToExcel = (data, filename, totalIncome = 0, totalExpense = 0)
     // Add UTF-8 BOM for proper encoding
     const BOM = '\uFEFF';
     
+    // Escape HTML special characters - moved outside loop for efficiency
+    const escapeHtml = (text) => {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    };
+    
     let html = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office"
             xmlns:x="urn:schemas-microsoft-com:office:excel"
@@ -492,16 +500,6 @@ export const exportToExcel = (data, filename, totalIncome = 0, totalExpense = 0)
     
     data.forEach(row => {
       const amount = parseFloat(row.amount) || 0;
-      // Escape HTML special characters
-      const escapeHtml = (text) => {
-        if (!text) return '';
-        return String(text)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;');
-      };
       
       html += `
         <tr>
@@ -554,12 +552,12 @@ export const exportToExcel = (data, filename, totalIncome = 0, totalExpense = 0)
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      console.log(`✅ Excel exported successfully: ${filename}`);
+      console.log(`✅ Excel экспортирован успешно: ${filename}`);
     } else {
-      throw new Error('Browser does not support download attribute');
+      throw new Error('Браузер не поддерживает скачивание файлов');
     }
   } catch (error) {
-    console.error('❌ Error exporting to Excel:', error);
+    console.error('❌ Ошибка экспорта в Excel:', error);
     throw error;
   }
 };

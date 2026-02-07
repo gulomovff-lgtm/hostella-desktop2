@@ -33,8 +33,9 @@ const ClientsView = ({ clients = [], onClientClick, onAddClient }) => {
   }, [clients]);
   
   // FIX ISSUE #3: Optimized filtering with useMemo
-  // NOTE: Full database search via Firestore query would require Firebase integration
-  // Current implementation uses in-memory filtering as a temporary solution
+  // NOTE: Database search via Firestore queries would provide better performance for large datasets.
+  // Current implementation uses in-memory filtering.
+  // TODO: When implementing real-time data sync with Firebase, replace with Firestore compound queries.
   const filteredClients = useMemo(() => {
     let result = clients;
     
