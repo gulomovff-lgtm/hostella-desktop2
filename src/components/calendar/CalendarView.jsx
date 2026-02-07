@@ -95,7 +95,28 @@ const CalendarView = ({ bookings = [], rooms = [], onGuestClick }) => {
     
     const totalPaid = getTotalPaid(guest);
     const totalPrice = guest.totalPrice || 0;
-    const pricePerNight = parseInt(guest.pricePerNight) || 1;
+    const pricePerNight = parseInt(guest.pricePerNight) || 0;
+    
+    // Skip payment visualization if price data is invalid
+    if (pricePerNight === 0 || totalPrice === 0) {
+      return (
+        <div
+          className="absolute h-8 cursor-pointer rounded overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-slate-400"
+          style={{
+            left: `${style.leftPercent}%`,
+            width: `${style.widthPercent}%`,
+            top: '4px',
+          }}
+          onClick={() => onGuestClick?.(guest)}
+        >
+          <div className="absolute inset-0 flex items-center px-2 z-10">
+            <span className="font-bold text-xs text-white bg-black/80 px-2 py-1 rounded truncate">
+              {guest.fullName || guest.name}
+            </span>
+          </div>
+        </div>
+      );
+    }
     
     // Calculate paid and debt days
     const paidDays = Math.floor(totalPaid / pricePerNight);
@@ -134,9 +155,9 @@ const CalendarView = ({ bookings = [], rooms = [], onGuestClick }) => {
           )}
         </div>
         
-        {/* Guest name overlay */}
+        {/* Guest name overlay with improved contrast */}
         <div className="absolute inset-0 flex items-center px-2 z-10">
-          <span className="font-bold text-[10px] text-white bg-black/60 px-2 py-1 rounded truncate">
+          <span className="font-bold text-xs text-white bg-black/80 px-2 py-1 rounded truncate">
             {guest.fullName || guest.name}
           </span>
         </div>

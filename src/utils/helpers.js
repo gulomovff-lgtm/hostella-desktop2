@@ -253,10 +253,13 @@ export const getDocData = (doc) => {
  * Print Functions
  */
 
-// Get total paid amount for a guest
-export const getTotalPaid = (guest) => {
+// Get total paid amount for a guest (accessor function)
+export const getGuestPaidAmount = (guest) => {
   return guest.paidAmount || 0;
 };
+
+// Alias for backwards compatibility
+export const getTotalPaid = getGuestPaidAmount;
 
 // Print check/receipt
 export const printCheck = (guest, hostel) => {
@@ -395,13 +398,14 @@ export const exportToExcel = (data, filename, totalIncome = 0, totalExpense = 0)
   `;
   
   data.forEach(row => {
+    const amount = parseFloat(row.amount) || 0;
     html += `
       <tr>
         <td>${row.date}</td>
         <td>${row.type === 'income' ? 'Приход' : 'Расход'}</td>
         <td>${row.hostel}</td>
         <td>${row.staff}</td>
-        <td>${parseInt(row.amount).toLocaleString()}</td>
+        <td>${amount.toLocaleString()}</td>
         <td>${row.method}</td>
         <td>${row.comment || row.description || ''}</td>
       </tr>

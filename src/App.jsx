@@ -105,7 +105,11 @@ function App() {
   const [selectedStaff, setSelectedStaff] = useState(null);
   
   // Hostel view for Fazliddin
-  const [viewHostel, setViewHostel] = useState('hostel2');
+  const [viewHostel, setViewHostel] = useState(() => {
+    // Initialize based on user's hostelId, default to hostel1 if not set
+    if (!user) return 'hostel1';
+    return user.hostelId === 'all' ? 'hostel1' : user.hostelId;
+  });
 
   // Authentication Handlers
   const handleLogin = async (login, password) => {
@@ -185,8 +189,9 @@ function App() {
       return;
     }
     
-    // Calculate refund if overpaid (balance < 0)
-    const refund = checkoutData?.refundAmount || Math.abs(Math.min(0, balance));
+    // Calculate refund for overpayment (when balance is negative)
+    const calculateRefund = (bal) => bal < 0 ? Math.abs(bal) : 0;
+    const refund = checkoutData?.refundAmount || calculateRefund(balance);
     
     // TODO: Implement Firebase logic
     showNotification('Гость выселен', 'success');
