@@ -1,135 +1,278 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import Card from '../ui/Card';
-import { formatDateDisplay } from '../../utils/helpers';
+import { formatDateDisplay, getTotalPaid } from '../../utils/helpers';
 
 /**
- * Calendar View component
+ * Calendar View component - Horizontal timeline view with room rows and guest blocks
  * @param {Object} props - CalendarView properties
- * @param {Array} props.bookings - Array of booking/reservation objects
- * @param {function} props.onDateClick - Date click handler
+ * @param {Array} props.bookings - Array of booking/reservation objects (guests)
+ * @param {Array} props.rooms - Array of room objects
+ * @param {function} props.onGuestClick - Guest click handler
  */
-const CalendarView = ({ bookings = [], onDateClick }) => {
+const CalendarView = ({ bookings = [], rooms = [], onGuestClick }) => {
   const [currentDate, setCurrentDate] = React.useState(new Date());
+  const [viewDays, setViewDays] = React.useState(14); // Show 14 days by default
   
-  const getDaysInMonth = (date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
+  // Generate calendar days array
+  const days = useMemo(() => {
+    const result = [];
+    const startDate = new Date(currentDate);
+    startDate.setHours(12, 0, 0, 0);
     
-    return { daysInMonth, startingDayOfWeek, year, month };
+    for (let i = 0; i < viewDays; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      result.push({
+        date: new Date(date),
+        str: date.toISOString().split('T')[0],
+        day: date.getDate(),
+        month: date.getMonth(),
+        year: date.getFullYear(),
+      });
+    }
+    return result;
+  }, [currentDate, viewDays]);
+  
+  const prevPeriod = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() - viewDays);
+    setCurrentDate(newDate);
   };
   
-  const { daysInMonth, startingDayOfWeek, year, month } = getDaysInMonth(currentDate);
-  
-  const prevMonth = () => {
-    setCurrentDate(new Date(year, month - 1, 1));
+  const nextPeriod = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + viewDays);
+    setCurrentDate(newDate);
   };
   
-  const nextMonth = () => {
-    setCurrentDate(new Date(year, month + 1, 1));
+  const goToToday = () => {
+    setCurrentDate(new Date());
   };
   
-  const monthNames = [
-    'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-    'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
-  ];
-  
-  const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-  
-  const days = [];
-  for (let i = 0; i < startingDayOfWeek; i++) {
-    days.push(null);
-  }
-  for (let day = 1; day <= daysInMonth; day++) {
-    days.push(day);
-  }
-  
-  const getBookingsForDay = (day) => {
-    const currentDate = new Date(year, month, day);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  // Calculate guest block position and width
+  const getGuestBlockStyle = (guest) => {
+    const checkIn = new Date(guest.checkInDate || guest.checkInDateTime || guest.checkIn);
+    checkIn.setHours(12, 0, 0, 0);
     
-    return bookings.filter(b => {
-      const checkIn = new Date(b.checkInDate);
-      const checkOut = new Date(b.checkOutDate);
-      checkIn.setHours(0, 0, 0, 0);
-      checkOut.setHours(0, 0, 0, 0);
-      
-      // For checked out guests (has actual checkOutDate in the past), use that date
-      // Otherwise extend to today if guest is still active
-      const isCheckedOut = b.checkedOut === true || checkOut < today;
-      const endDate = isCheckedOut ? checkOut : today;
-      
-      return currentDate >= checkIn && currentDate <= endDate;
-    });
+    const checkOut = new Date(guest.checkOutDate);
+    checkOut.setHours(12, 0, 0, 0);
+    
+    // For checked_out guests, DON'T extend to current date
+    const calendarStart = new Date(days[0].str);
+    calendarStart.setHours(12, 0, 0, 0);
+    const calendarEnd = new Date(days[days.length - 1].str);
+    calendarEnd.setHours(12, 0, 0, 0);
+    
+    // Check if guest is visible in current calendar range
+    if (checkOut < calendarStart || checkIn > calendarEnd) return null;
+    
+    // Calculate position and width
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const totalCalendarMs = msPerDay * viewDays;
+    
+    let startTimeDiff = checkIn.getTime() - calendarStart.getTime();
+    let durationMs = checkOut.getTime() - checkIn.getTime();
+    
+    // Adjust if starts before calendar
+    if (startTimeDiff < 0) {
+      durationMs += startTimeDiff;
+      startTimeDiff = 0;
+    }
+    
+    const leftPercent = (startTimeDiff / totalCalendarMs) * 100;
+    const widthPercent = (durationMs / totalCalendarMs) * 100;
+    
+    return { 
+      leftPercent, 
+      widthPercent: Math.min(widthPercent, 100 - leftPercent)
+    };
+  };
+  
+  // Guest Block Component with payment gradient
+  const GuestBlock = ({ guest }) => {
+    const style = getGuestBlockStyle(guest);
+    if (!style) return null;
+    
+    const totalPaid = getTotalPaid(guest);
+    const totalPrice = guest.totalPrice || 0;
+    const pricePerNight = parseInt(guest.pricePerNight) || 1;
+    
+    // Calculate paid and debt days
+    const paidDays = Math.floor(totalPaid / pricePerNight);
+    const totalDays = parseInt(guest.days) || 1;
+    const debtDays = Math.max(0, totalDays - paidDays);
+    
+    const paidPercent = (paidDays / totalDays) * 100;
+    const debtPercent = (debtDays / totalDays) * 100;
+    
+    return (
+      <div
+        className="absolute h-8 cursor-pointer rounded overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+        style={{
+          left: `${style.leftPercent}%`,
+          width: `${style.widthPercent}%`,
+          top: '4px',
+        }}
+        onClick={() => onGuestClick?.(guest)}
+      >
+        {/* Payment gradient visualization */}
+        <div className="absolute inset-0 flex">
+          {/* Paid portion - green */}
+          {paidDays > 0 && (
+            <div 
+              style={{ width: `${paidPercent}%` }}
+              className="bg-emerald-500 border-r-2 border-emerald-700"
+            />
+          )}
+          
+          {/* Debt portion - red */}
+          {debtDays > 0 && (
+            <div 
+              style={{ width: `${debtPercent}%` }}
+              className="bg-rose-500"
+            />
+          )}
+        </div>
+        
+        {/* Guest name overlay */}
+        <div className="absolute inset-0 flex items-center px-2 z-10">
+          <span className="font-bold text-[10px] text-white bg-black/60 px-2 py-1 rounded truncate">
+            {guest.fullName || guest.name}
+          </span>
+        </div>
+      </div>
+    );
+  };
+  
+  // Get guests for a specific room
+  const getGuestsForRoom = (roomId) => {
+    return bookings.filter(b => b.roomId === roomId || b.room?.id === roomId);
   };
   
   return (
     <Card>
       {/* Calendar Header */}
       <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={prevMonth}
-          className="px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
-        >
-          ←
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={prevPeriod}
+            className="px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors font-bold"
+          >
+            ←
+          </button>
+          <button
+            onClick={goToToday}
+            className="px-4 py-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 transition-colors text-sm font-semibold"
+          >
+            Сегодня
+          </button>
+          <button
+            onClick={nextPeriod}
+            className="px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors font-bold"
+          >
+            →
+          </button>
+        </div>
+        
         <h3 className="text-xl font-bold text-slate-800">
-          {monthNames[month]} {year}
+          {formatDateDisplay(days[0].date)} - {formatDateDisplay(days[days.length - 1].date)}
         </h3>
-        <button
-          onClick={nextMonth}
-          className="px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
-        >
-          →
-        </button>
-      </div>
-      
-      {/* Day Names */}
-      <div className="grid grid-cols-7 gap-2 mb-2">
-        {dayNames.map(day => (
-          <div key={day} className="text-center font-bold text-slate-600 text-sm">
-            {day}
-          </div>
-        ))}
-      </div>
-      
-      {/* Calendar Days */}
-      <div className="grid grid-cols-7 gap-2">
-        {days.map((day, index) => {
-          const dayBookings = day ? getBookingsForDay(day) : [];
-          const isToday = day && 
-            new Date().getDate() === day && 
-            new Date().getMonth() === month && 
-            new Date().getFullYear() === year;
-          
-          return (
-            <div
-              key={index}
-              onClick={() => day && onDateClick?.(new Date(year, month, day))}
-              className={`
-                aspect-square p-2 rounded-lg border transition-all cursor-pointer
-                ${!day ? 'invisible' : ''}
-                ${isToday ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:bg-slate-50'}
-                ${dayBookings.length > 0 ? 'bg-green-50' : ''}
-              `}
+        
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-600">Дней:</span>
+          {[7, 14, 30].map(count => (
+            <button
+              key={count}
+              onClick={() => setViewDays(count)}
+              className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                viewDays === count
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
             >
-              {day && (
-                <div className="flex flex-col h-full">
-                  <span className="font-medium text-sm">{day}</span>
-                  {dayBookings.length > 0 && (
-                    <span className="text-xs text-green-600 mt-auto">
-                      {dayBookings.length} 🏠
-                    </span>
-                  )}
+              {count}
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      {/* Day Headers */}
+      <div className="flex border-b border-slate-200 pb-2 mb-4">
+        <div className="w-32 flex-shrink-0 font-bold text-slate-600 text-sm">
+          Комната
+        </div>
+        <div className="flex-1 flex">
+          {days.map((day, idx) => {
+            const isToday = new Date().toDateString() === day.date.toDateString();
+            return (
+              <div
+                key={idx}
+                className={`flex-1 text-center text-xs ${
+                  isToday ? 'bg-indigo-100 text-indigo-700 font-bold rounded-t' : 'text-slate-600'
+                }`}
+              >
+                <div>{day.day}</div>
+                <div className="text-[10px]">
+                  {['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][day.date.getDay()]}
                 </div>
-              )}
-            </div>
-          );
-        })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Room Rows with Guest Blocks */}
+      <div className="space-y-2">
+        {rooms.length > 0 ? (
+          rooms.map(room => {
+            const roomGuests = getGuestsForRoom(room.id);
+            return (
+              <div key={room.id} className="flex border-b border-slate-100 pb-2">
+                <div className="w-32 flex-shrink-0 font-semibold text-slate-700 text-sm py-2">
+                  №{room.number}
+                </div>
+                <div className="flex-1 relative min-h-[40px]">
+                  {/* Day grid background */}
+                  <div className="absolute inset-0 flex">
+                    {days.map((day, idx) => {
+                      const isToday = new Date().toDateString() === day.date.toDateString();
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex-1 border-r border-slate-100 ${
+                            isToday ? 'bg-indigo-50/50' : ''
+                          }`}
+                        />
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Guest blocks */}
+                  {roomGuests.map(guest => (
+                    <GuestBlock key={guest.id} guest={guest} />
+                  ))}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="text-center py-12 text-slate-400">
+            <p className="text-6xl mb-4">📅</p>
+            <p>Комнаты не найдены</p>
+          </div>
+        )}
+      </div>
+      
+      {/* Legend */}
+      <div className="mt-6 pt-4 border-t border-slate-200 flex items-center gap-6 text-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-emerald-500 rounded"></div>
+          <span className="text-slate-600">Оплачено</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-rose-500 rounded"></div>
+          <span className="text-slate-600">Долг</span>
+        </div>
       </div>
     </Card>
   );

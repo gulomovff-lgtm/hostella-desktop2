@@ -105,7 +105,7 @@ function App() {
   const [selectedStaff, setSelectedStaff] = useState(null);
   
   // Hostel view for Fazliddin
-  const [viewHostel, setViewHostel] = useState(user?.hostelId || 'hostel1');
+  const [viewHostel, setViewHostel] = useState('hostel2');
 
   // Authentication Handlers
   const handleLogin = async (login, password) => {
@@ -174,10 +174,23 @@ function App() {
     await sendTelegramMessage(`🏠 Заселение: ${guestData.name} в комнату ${guestData.roomId}`);
   };
 
-  const handleCheckOut = async (guest) => {
+  const handleCheckOut = async (guest, checkoutData) => {
+    // Calculate balance (debt)
+    const balance = (guest.totalPrice || 0) - (guest.paidAmount || 0);
+    
+    // Block checkout if guest has debt (balance > 0 means they owe money)
+    // Allow checkout when balance <= 0 (fully paid or overpaid)
+    if (balance > 0) {
+      showNotification(`Ошибка! Долг: ${balance}. Невозможно выселить.`, 'error');
+      return;
+    }
+    
+    // Calculate refund if overpaid (balance < 0)
+    const refund = checkoutData?.refundAmount || Math.abs(Math.min(0, balance));
+    
     // TODO: Implement Firebase logic
     showNotification('Гость выселен', 'success');
-    await sendTelegramMessage(`🚪 Выселение: ${guest.name} из комнаты ${guest.room?.number}`);
+    await sendTelegramMessage(`🚪 Выселение: ${guest.name || guest.fullName} из комнаты ${guest.room?.number || guest.roomNumber}. Возврат: ${refund}`);
   };
 
   const handleMoveGuest = async (guestId, newRoomId) => {
@@ -494,6 +507,43 @@ function App() {
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto pb-20 md:pb-0">
         <div className="container mx-auto p-6">
+          {/* Fazliddin Hostel Switcher */}
+          {user?.login === 'fazliddin' && (
+            <div className="mb-6 bg-white rounded-xl shadow-sm p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex bg-slate-100 rounded-lg border border-slate-300 overflow-hidden">
+                  <button 
+                    onClick={() => setViewHostel('hostel1')}
+                    className={`px-6 py-3 font-medium transition-colors ${
+                      viewHostel === 'hostel1' 
+                        ? 'bg-indigo-600 text-white' 
+                        : 'text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    👁️ Хостел №1 (Просмотр)
+                  </button>
+                  <button 
+                    onClick={() => setViewHostel('hostel2')}
+                    className={`px-6 py-3 font-medium transition-colors ${
+                      viewHostel === 'hostel2' 
+                        ? 'bg-indigo-600 text-white' 
+                        : 'text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    ✏️ Хостел №2 (Работа)
+                  </button>
+                </div>
+                
+                {viewHostel === 'hostel1' && (
+                  <div className="flex items-center gap-2 text-amber-600 text-sm font-medium">
+                    <span>ℹ️</span>
+                    <span>Только просмотр. Изменения доступны только в Хостеле №2</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
           {/* Dashboard */}
           {currentTab === 'dashboard' && (
             <>
@@ -539,7 +589,14 @@ function App() {
 
           {/* Calendar */}
           {currentTab === 'calendar' && (
-            <CalendarView bookings={guests} onDateClick={(date) => console.log(date)} />
+            <CalendarView 
+              bookings={guests} 
+              rooms={rooms}
+              onGuestClick={(guest) => {
+                setSelectedGuest(guest);
+                setGuestDetailsModalOpen(true);
+              }} 
+            />
           )}
 
           {/* Guests */}

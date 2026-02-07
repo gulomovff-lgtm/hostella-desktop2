@@ -248,3 +248,191 @@ export const getDocData = (doc) => {
   if (!doc || !doc.exists()) return null;
   return { id: doc.id, ...doc.data() };
 };
+
+/**
+ * Print Functions
+ */
+
+// Get total paid amount for a guest
+export const getTotalPaid = (guest) => {
+  return guest.paidAmount || 0;
+};
+
+// Print check/receipt
+export const printCheck = (guest, hostel) => {
+  const w = window.open('', '', 'width=400,height=600');
+  w.document.write(`
+    <html>
+    <head>
+      <title>Чек оплаты</title>
+      <style>
+        body { font-family: monospace; width: 300px; padding: 10px; }
+        .center { text-align: center; }
+        .line { border-bottom: 1px dashed #000; margin: 10px 0; }
+        .row { display: flex; justify-content: space-between; margin: 5px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="center">
+        <h2>${hostel.name}</h2>
+        <p>${hostel.address}</p>
+      </div>
+      <div class="line"></div>
+      <div class="row"><span>Дата:</span><span>${new Date().toLocaleString('ru-RU')}</span></div>
+      <div class="row"><span>Гость:</span><span>${guest.fullName || guest.name}</span></div>
+      <div class="row"><span>Паспорт:</span><span>${guest.passport || guest.passportNumber}</span></div>
+      <div class="line"></div>
+      <div class="row"><span>Комната:</span><span>${guest.roomNumber || guest.room?.number}</span></div>
+      <div class="row"><span>Место:</span><span>${guest.bedId || 'Н/Д'}</span></div>
+      <div class="row"><span>Дней:</span><span>${guest.days}</span></div>
+      <div class="row"><span>Цена/ночь:</span><span>${guest.pricePerNight}</span></div>
+      <div class="line"></div>
+      <div class="row"><b>ИТОГО:</b><b>${guest.totalPrice}</b></div>
+      <div class="row"><span>Оплачено:</span><span>${getTotalPaid(guest)}</span></div>
+      <div class="line"></div>
+      <div class="center"><small>Спасибо!</small></div>
+    </body>
+    </html>
+  `);
+  w.document.close();
+  w.print();
+};
+
+// Print registration form
+export const printRegistrationForm = (guest, hostel) => {
+  const w = window.open('', '', 'width=800,height=600');
+  w.document.write(`
+    <html>
+    <head>
+      <title>Регистрационная анкета</title>
+      <style>
+        body { font-family: Arial; padding: 40px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .field { margin: 15px 0; border-bottom: 1px solid #000; padding: 5px 0; }
+        .label { font-weight: bold; display: inline-block; width: 200px; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h2>РЕГИСТРАЦИОННАЯ АНКЕТА ГОСТЯ</h2>
+        <p>${hostel.name} • ${hostel.address}</p>
+      </div>
+      <div class="field"><span class="label">ФИО:</span> ${guest.fullName || guest.name}</div>
+      <div class="field"><span class="label">Паспорт:</span> ${guest.passport || guest.passportNumber}</div>
+      <div class="field"><span class="label">Дата рождения:</span> ${guest.birthDate || 'Н/Д'}</div>
+      <div class="field"><span class="label">Гражданство:</span> ${guest.country}</div>
+      <div class="field"><span class="label">Комната:</span> ${guest.roomNumber || guest.room?.number}</div>
+      <div class="field"><span class="label">Дата заселения:</span> ${new Date(guest.checkInDate).toLocaleDateString('ru-RU')}</div>
+      <div class="field"><span class="label">Дата выселения:</span> ${new Date(guest.checkOutDate).toLocaleDateString('ru-RU')}</div>
+      <div class="field"><span class="label">Подпись:</span> ________________</div>
+    </body>
+    </html>
+  `);
+  w.document.close();
+  w.print();
+};
+
+// Print reference certificate
+export const printReference = (guest, hostel) => {
+  const w = window.open('', '', 'width=800,height=600');
+  w.document.write(`
+    <html>
+    <head>
+      <title>Справка</title>
+      <style>
+        body { font-family: 'Times New Roman'; padding: 60px; line-height: 1.8; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .content { text-indent: 40px; text-align: justify; }
+        .signature { margin-top: 60px; display: flex; justify-content: space-between; }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h2>СПРАВКА</h2>
+        <p>о проживании в ${hostel.name}</p>
+      </div>
+      <div class="content">
+        <p>Настоящая справка выдана ${guest.fullName || guest.name}, паспорт ${guest.passport || guest.passportNumber}, 
+        в том, что он(а) проживал(а) в ${hostel.name} по адресу: ${hostel.address}, 
+        в период с ${new Date(guest.checkInDate).toLocaleDateString('ru-RU')} по 
+        ${new Date(guest.checkOutDate).toLocaleDateString('ru-RU')}.</p>
+      </div>
+      <div class="signature">
+        <div>Дата: ${new Date().toLocaleDateString('ru-RU')}</div>
+        <div>Подпись: ________________</div>
+      </div>
+    </body>
+    </html>
+  `);
+  w.document.close();
+  w.print();
+};
+
+// Export data to Excel
+export const exportToExcel = (data, filename, totalIncome = 0, totalExpense = 0) => {
+  const balance = totalIncome - totalExpense;
+  
+  let html = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office">
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #000; padding: 8px; }
+        th { background-color: #4f46e5; color: white; }
+        .total { background-color: #f3f4f6; font-weight: bold; }
+      </style>
+    </head>
+    <body>
+      <table>
+        <thead>
+          <tr>
+            <th>Дата</th><th>Тип</th><th>Хостел</th><th>Кассир</th>
+            <th>Сумма</th><th>Метод</th><th>Описание</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  data.forEach(row => {
+    html += `
+      <tr>
+        <td>${row.date}</td>
+        <td>${row.type === 'income' ? 'Приход' : 'Расход'}</td>
+        <td>${row.hostel}</td>
+        <td>${row.staff}</td>
+        <td>${parseInt(row.amount).toLocaleString()}</td>
+        <td>${row.method}</td>
+        <td>${row.comment || row.description || ''}</td>
+      </tr>
+    `;
+  });
+  
+  html += `
+          <tr class="total">
+            <td colspan="4">ИТОГО ПРИХОД:</td>
+            <td>${totalIncome.toLocaleString()}</td>
+            <td colspan="2"></td>
+          </tr>
+          <tr class="total">
+            <td colspan="4">ИТОГО РАСХОД:</td>
+            <td>${totalExpense.toLocaleString()}</td>
+            <td colspan="2"></td>
+          </tr>
+          <tr class="total">
+            <td colspan="4">БАЛАНС:</td>
+            <td style="color: ${balance >= 0 ? 'green' : 'red'};">${balance.toLocaleString()}</td>
+            <td colspan="2"></td>
+          </tr>
+        </tbody>
+      </table>
+    </body>
+    </html>
+  `;
+  
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+};
