@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Button from '../ui/Button';
-import { inputClass, labelClass } from '../../config/constants';
+import { inputClass, labelClass } from '../../constants/config';
 import { formatCurrency } from '../../utils/helpers';
 
 const ShiftClosingModal = ({ shift, isOpen, onClose, onConfirm }) => {

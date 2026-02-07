@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { db, auth } from './config/firebase';
-import { DEFAULT_USERS } from './config/constants';
+import { db, auth } from './firebase/config';
+import { DEFAULT_USERS } from './constants/config';
 import { sendTelegramMessage } from './utils/telegram';
 
 // Layout Components

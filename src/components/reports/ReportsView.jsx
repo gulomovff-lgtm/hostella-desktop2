@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import { inputClass, labelClass } from '../../config/constants';
-import { formatCurrency, getCurrentDate } from '../../utils/helpers';
+import { inputClass, labelClass } from '../../constants/config';
+import { formatCurrency } from '../../utils/calculations';
+import { getCurrentDate } from '../../utils/dateHelpers';
 
 const ReportsView = ({ onGenerateReport }) => {
   const [dateRange, setDateRange] = useState({

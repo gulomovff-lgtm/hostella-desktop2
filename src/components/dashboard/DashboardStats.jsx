@@ -1,6 +1,6 @@
 import React from 'react';
 import Card from '../ui/Card';
-import { formatCurrency } from '../../utils/helpers';
+import { formatCurrency } from '../../utils/calculations';
 
 /**
  * Dashboard Statistics component

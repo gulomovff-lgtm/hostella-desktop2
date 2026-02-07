@@ -1,7 +1,8 @@
 import React from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import { formatCurrency, formatDateDisplay } from '../../utils/helpers';
+import { formatCurrency } from '../../utils/calculations';
+import { formatDateDisplay } from '../../utils/dateHelpers';
 
 const DebtsView = ({ debts = [], onCreateDebt, onPayDebt }) => {
   const totalDebt = debts.reduce((sum, d) => sum + (d.amount || 0), 0);

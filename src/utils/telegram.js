@@ -1,4 +1,4 @@
-import { TG_BOT_TOKEN, TG_CHAT_IDS } from '../config/constants';
+import { TG_BOT_TOKEN, TG_CHAT_IDS } from '../constants/config';
 
 export const sendTelegramMessage = async (text) => {
     if (!TG_BOT_TOKEN || TG_BOT_TOKEN.includes("YOUR_TELEGRAM")) return;

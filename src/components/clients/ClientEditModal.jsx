@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Button from '../ui/Button';
-import { inputClass, labelClass, COUNTRIES } from '../../config/constants';
+import { inputClass, labelClass } from '../../constants/config';
+import { COUNTRIES } from '../../constants/countries';
 
 const ClientEditModal = ({ client = null, isOpen, onClose, onSave }) => {
   const [formData, setFormData] = useState({
