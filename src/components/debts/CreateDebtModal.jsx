@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Button from '../ui/Button';
-import { inputClass, labelClass } from '../../config/constants';
-import { getCurrentDate } from '../../utils/helpers';
+import { inputClass, labelClass } from '../../constants/config';
+import { getCurrentDate } from '../../utils/dateHelpers';
 
 const CreateDebtModal = ({ isOpen, onClose, onSave }) => {
   const [formData, setFormData] = useState({

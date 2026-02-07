@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import Button from '../ui/Button';
-import { inputClass, labelClass, COUNTRIES } from '../../config/constants';
-import { getCurrentDate, getDateWithOffset } from '../../utils/helpers';
+import { inputClass, labelClass } from '../../constants/config';
+import { COUNTRIES } from '../../constants/countries';
+import { getCurrentDate, getDateWithOffset } from '../../utils/dateHelpers';
 
 /**
  * Check-in Modal component

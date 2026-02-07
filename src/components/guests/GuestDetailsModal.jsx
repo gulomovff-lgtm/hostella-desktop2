@@ -1,6 +1,7 @@
 import React from 'react';
 import Button from '../ui/Button';
-import { formatDateDisplay, formatCurrency } from '../../utils/helpers';
+import { formatDateDisplay } from '../../utils/dateHelpers';
+import { formatCurrency } from '../../utils/calculations';
 
 /**
  * Guest Details Modal component

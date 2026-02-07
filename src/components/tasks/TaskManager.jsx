@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import { inputClass } from '../../config/constants';
+import { inputClass } from '../../constants/config';
 
 const TaskManager = ({ tasks = [], onAddTask, onToggleTask, onDeleteTask }) => {
   const [newTask, setNewTask] = useState('');

@@ -1,108 +1,6 @@
-// Helper functions for the Hostella application
-// Contains date helpers, calculations, and validation functions
-
 /**
- * Date Helpers
+ * General helper functions for the Hostella application
  */
-
-// Format date to YYYY-MM-DD
-export const formatDate = (date) => {
-  if (!date) return '';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
-  return d.toISOString().split('T')[0];
-};
-
-// Format date to DD.MM.YYYY
-export const formatDateDisplay = (date) => {
-  if (!date) return '';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const year = d.getFullYear();
-  return `${day}.${month}.${year}`;
-};
-
-// Format date and time
-export const formatDateTime = (date) => {
-  if (!date) return '';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return '';
-  return `${formatDateDisplay(d)} ${d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
-};
-
-// Get current date
-export const getCurrentDate = () => {
-  return formatDate(new Date());
-};
-
-// Get date with offset in days
-export const getDateWithOffset = (days) => {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  return formatDate(date);
-};
-
-// Calculate difference between two dates in days
-export const daysBetween = (date1, date2) => {
-  const d1 = new Date(date1);
-  const d2 = new Date(date2);
-  const diffTime = Math.abs(d2 - d1);
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays;
-};
-
-// Check if date is in the past
-export const isPastDate = (date) => {
-  const d = new Date(date);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return d < today;
-};
-
-// Check if date is today
-export const isToday = (date) => {
-  const d = new Date(date);
-  const today = new Date();
-  return d.toDateString() === today.toDateString();
-};
-
-/**
- * Calculation Helpers
- */
-
-// Calculate total price for a stay
-export const calculateStayPrice = (checkInDate, checkOutDate, pricePerNight) => {
-  const nights = daysBetween(checkInDate, checkOutDate);
-  return nights * pricePerNight;
-};
-
-// Calculate remaining debt
-export const calculateDebt = (totalAmount, paidAmount) => {
-  return Math.max(0, totalAmount - paidAmount);
-};
-
-// Format number as currency
-export const formatCurrency = (amount, currency = 'UZS') => {
-  return new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency: currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount);
-};
-
-// Format number with spaces (e.g., 1000000 -> 1 000 000)
-export const formatNumber = (num) => {
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-};
-
-// Calculate percentage
-export const calculatePercentage = (value, total) => {
-  if (total === 0) return 0;
-  return Math.round((value / total) * 100);
-};
 
 /**
  * Validation Helpers
@@ -128,21 +26,6 @@ export const isRequired = (value) => {
     return value.trim().length > 0;
   }
   return value !== null && value !== undefined;
-};
-
-// Validate date format (YYYY-MM-DD)
-export const isValidDateFormat = (dateString) => {
-  if (!dateString) return false;
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(dateString)) return false;
-  const date = new Date(dateString);
-  return !isNaN(date.getTime());
-};
-
-// Validate check-out date is after check-in date
-export const isValidCheckOutDate = (checkInDate, checkOutDate) => {
-  if (!checkInDate || !checkOutDate) return false;
-  return new Date(checkOutDate) > new Date(checkInDate);
 };
 
 /**
@@ -235,13 +118,6 @@ export const getRoomStatusLabel = (status) => {
 /**
  * Firebase Helpers
  */
-
-// Convert Firebase timestamp to Date
-export const timestampToDate = (timestamp) => {
-  if (!timestamp) return null;
-  if (timestamp.toDate) return timestamp.toDate();
-  return new Date(timestamp);
-};
 
 // Get safe document data
 export const getDocData = (doc) => {
