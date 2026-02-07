@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { inputClass } from '../../config/constants';
+import { COUNTRIES } from '../../config/constants'; // FIX ISSUE #3: Import COUNTRIES constant
 
 /**
  * Clients View component
@@ -15,13 +16,26 @@ const ClientsView = ({ clients = [], onClientClick, onAddClient }) => {
   const [pagination, setPagination] = useState({ page: 1, perPage: 25 });
   const [countryFilter, setCountryFilter] = useState('');
   
-  // Get unique countries from clients
-  const uniqueCountries = useMemo(() => {
-    const countries = new Set(clients.map(c => c.country).filter(Boolean));
-    return Array.from(countries).sort();
+  // FIX ISSUE #3: Use COUNTRIES constant for country filter dropdown
+  // This provides a standardized list of countries
+  const countriesForFilter = useMemo(() => {
+    // Get unique countries from clients for "active" list
+    const clientCountries = new Set(clients.map(c => c.country).filter(Boolean));
+    
+    // Combine with COUNTRIES constant, prioritize client countries first
+    const activeCountries = Array.from(clientCountries).sort();
+    const allCountries = COUNTRIES.filter(c => !clientCountries.has(c));
+    
+    return {
+      active: activeCountries,
+      all: allCountries
+    };
   }, [clients]);
   
-  // Optimized filtering with useMemo
+  // FIX ISSUE #3: Optimized filtering with useMemo
+  // NOTE: Database search via Firestore queries would provide better performance for large datasets.
+  // Current implementation uses in-memory filtering.
+  // TODO: When implementing real-time data sync with Firebase, replace with Firestore compound queries.
   const filteredClients = useMemo(() => {
     let result = clients;
     
@@ -31,6 +45,7 @@ const ClientsView = ({ clients = [], onClientClick, onAddClient }) => {
     }
     
     // Apply search filter (only if search term has more than 1 character)
+    // TODO: When Firebase is integrated, replace with Firestore query for better performance
     if (searchTerm.length > 1) {
       const s = searchTerm.toLowerCase();
       result = result.filter(client => 
@@ -79,9 +94,19 @@ const ClientsView = ({ clients = [], onClientClick, onAddClient }) => {
             className={inputClass}
           >
             <option value="">Все страны</option>
-            {uniqueCountries.map(country => (
-              <option key={country} value={country}>{country}</option>
-            ))}
+            {/* FIX ISSUE #3: Show active countries first, then all from COUNTRIES constant */}
+            {countriesForFilter.active.length > 0 && (
+              <optgroup label="Активные страны">
+                {countriesForFilter.active.map(country => (
+                  <option key={country} value={country}>{country}</option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label="Все страны">
+              {COUNTRIES.map(country => (
+                <option key={country} value={country}>{country}</option>
+              ))}
+            </optgroup>
           </select>
         </div>
       </div>

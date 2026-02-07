@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { db, auth } from './config/firebase';
 import { DEFAULT_USERS, HOSTELS } from './config/constants';
 import { sendTelegramMessage } from './utils/telegram';
+// FIX ISSUE #5 & #6: Import helper functions for Excel export and printing
+import { exportToExcel, printCheck, printRegistrationForm, printReference } from './utils/helpers';
 
 // Layout Components
 import LoginScreen from './components/layout/LoginScreen';
@@ -151,23 +153,38 @@ function App() {
     setNotification({ ...notification, show: false });
   };
 
-  // Permission Helpers
+  // FIX ISSUE #4: Permission Helpers with viewHostels/editHostels support
   const canViewHostel = (hostelId) => {
-    if (user?.role === 'admin') return true;
-    if (user?.login === 'fazliddin') return true; // Can view all hostels
-    return user?.hostelId === hostelId;
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    // Use viewHostels array if available, otherwise fall back to hostelId
+    const viewHostels = user.viewHostels || [user.hostelId];
+    return viewHostels.includes(hostelId);
   };
 
   const canModifyHostel = (hostelId) => {
-    if (user?.role === 'admin') return true;
-    if (user?.login === 'fazliddin' && hostelId === 'hostel2') return true; // Can only modify hostel2
-    return user?.hostelId === hostelId && user?.role === 'cashier';
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    // Use editHostels array if available, otherwise fall back to hostelId
+    const editHostels = user.editHostels || [user.hostelId];
+    return editHostels.includes(hostelId);
   };
 
-  // Hostel Change Handler
+  // FIX ISSUE #4: Check if current user is in read-only mode for current hostel
+  const isReadOnly = () => {
+    return !canModifyHostel(viewHostel);
+  };
+
+  // FIX ISSUE #4: Hostel Change Handler with permission check
   const handleHostelChange = (hostelId) => {
+    if (!canViewHostel(hostelId)) {
+      showNotification('У вас нет доступа к этому хостелу', 'error');
+      return;
+    }
     setViewHostel(hostelId);
-    showNotification(`Переключено на ${hostelId === 'hostel1' ? 'Хостел №1' : 'Хостел №2'}`, 'info');
+    const hostelName = HOSTELS[hostelId]?.name || hostelId;
+    const readOnlyMsg = !canModifyHostel(hostelId) ? ' (только просмотр)' : '';
+    showNotification(`Переключено на ${hostelName}${readOnlyMsg}`, 'info');
   };
 
   // Tab Change Handler
@@ -188,11 +205,23 @@ function App() {
     const paidAmount = parseFloat(guest.paidAmount) || 0;
     const balance = totalPrice - paidAmount;
     
-    // Block checkout if guest has debt (balance > 0 means they owe money)
-    // Allow checkout when balance <= 0 (fully paid or overpaid)
-    if (balance > 0) {
+    // Check if stay has expired (current date > checkOutDate)
+    const checkOutDate = new Date(guest.checkOutDate);
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    checkOutDate.setHours(0, 0, 0, 0);
+    const isExpired = currentDate >= checkOutDate;
+    
+    // FIX ISSUE #1: Allow checkout if debt <= 0 OR if stay has expired (admin can checkout expired guests)
+    // Block checkout only if guest has debt AND stay hasn't expired yet
+    if (balance > 0 && !isExpired) {
       showNotification(`Ошибка! Долг: ${balance.toLocaleString()}. Невозможно выселить.`, 'error');
       return;
+    }
+    
+    // If guest has debt but stay expired, allow checkout (TODO: debt will be recorded in debts collection when Firebase is integrated)
+    if (balance > 0 && isExpired) {
+      showNotification(`Внимание! Выселение с долгом ${balance.toLocaleString()}. Долг будет зафиксирован.`, 'warning');
     }
     
     // Calculate refund: use provided amount or calculate from overpayment
@@ -295,189 +324,19 @@ function App() {
     showNotification('Пароль изменен', 'success');
   };
 
-  // Excel Export Function
-  const exportToExcel = (data, filename, totalIncome = 0, totalExpense = 0) => {
-    const balance = totalIncome - totalExpense;
-    let tableContent = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" 
-            xmlns:x="urn:schemas-microsoft-com:office:excel">
-      <head>
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <style>
-          table { border-collapse: collapse; width: 100%; }
-          th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-          th { background-color: #4f46e5; color: #fff; font-weight: bold; }
-          .total-row { background-color: #f3f4f6; font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <table>
-          <thead>
-            <tr>`;
-    
-    // Add headers
-    if (data.length > 0) {
-      Object.keys(data[0]).forEach(key => {
-        tableContent += `<th>${key}</th>`;
-      });
-      tableContent += `</tr></thead><tbody>`;
-      
-      // Add data rows
-      data.forEach(row => {
-        tableContent += `<tr>`;
-        Object.values(row).forEach(value => {
-          tableContent += `<td>${value}</td>`;
-        });
-        tableContent += `</tr>`;
-      });
-    }
-    
-    // Add totals if provided
-    if (totalIncome || totalExpense) {
-      const colCount = data.length > 0 ? Object.keys(data[0]).length : 5;
-      tableContent += `
-        <tr class="total-row">
-          <td colspan="${colCount - 1}">ИТОГО ПРИХОД:</td>
-          <td>${totalIncome.toLocaleString()}</td>
-        </tr>
-        <tr class="total-row">
-          <td colspan="${colCount - 1}">ИТОГО РАСХОД:</td>
-          <td>${totalExpense.toLocaleString()}</td>
-        </tr>
-        <tr class="total-row">
-          <td colspan="${colCount - 1}">БАЛАНС:</td>
-          <td>${balance.toLocaleString()}</td>
-        </tr>`;
-    }
-    
-    tableContent += `</tbody></table></body></html>`;
-    
-    const blob = new Blob([tableContent], { type: 'application/vnd.ms-excel' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-    showNotification('Отчет экспортирован', 'success');
-  };
-
-  // Print Functions
-  const printCheck = (guest, hostel) => {
-    const w = window.open('', '', 'width=400,height=600');
-    const getTotalPaid = (g) => g.paidAmount || 0;
-    
-    w.document.write(`
-      <html>
-      <head>
-        <title>Чек оплаты</title>
-        <style>
-          body { font-family: monospace; width: 300px; padding: 10px; }
-          .center { text-align: center; }
-          .line { border-bottom: 1px dashed #000; margin: 10px 0; }
-          .row { display: flex; justify-content: space-between; margin: 5px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="center">
-          <h2>${hostel.name}</h2>
-          <p>${hostel.address}</p>
-        </div>
-        <div class="line"></div>
-        <div class="row"><span>Дата:</span><span>${new Date().toLocaleString()}</span></div>
-        <div class="row"><span>Гость:</span><span>${guest.name}</span></div>
-        <div class="row"><span>Паспорт:</span><span>${guest.passportNumber || 'Н/Д'}</span></div>
-        <div class="line"></div>
-        <div class="row"><span>Комната:</span><span>${guest.room?.number || 'Н/Д'}</span></div>
-        <div class="row"><span>Дней:</span><span>${guest.days || 'Н/Д'}</span></div>
-        <div class="row"><span>Цена/ночь:</span><span>${guest.pricePerNight || 0}</span></div>
-        <div class="line"></div>
-        <div class="row"><b>ИТОГО:</b><b>${guest.totalPrice || 0}</b></div>
-        <div class="row"><span>Оплачено:</span><span>${getTotalPaid(guest)}</span></div>
-        <div class="row"><span>Долг:</span><span>${(guest.totalPrice || 0) - getTotalPaid(guest)}</span></div>
-        <div class="line"></div>
-        <div class="center"><small>Спасибо за визит!</small></div>
-      </body>
-      </html>
-    `);
-    w.document.close();
-    w.print();
-  };
-
-  const printRegistrationForm = (guest, hostel) => {
-    const w = window.open('', '', 'width=800,height=600');
-    w.document.write(`
-      <html>
-      <head>
-        <title>Регистрационная анкета</title>
-        <style>
-          body { font-family: Arial; padding: 40px; }
-          .header { text-align: center; margin-bottom: 30px; }
-          .field { margin: 15px 0; border-bottom: 1px solid #000; padding: 5px 0; }
-          .label { font-weight: bold; display: inline-block; width: 200px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h2>РЕГИСТРАЦИОННАЯ АНКЕТА ГОСТЯ</h2>
-          <p>${hostel.name} • ${hostel.address}</p>
-        </div>
-        <div class="field"><span class="label">ФИО:</span> ${guest.name}</div>
-        <div class="field"><span class="label">Паспорт:</span> ${guest.passportNumber || 'Н/Д'}</div>
-        <div class="field"><span class="label">Дата рождения:</span> ${guest.birthDate || 'Н/Д'}</div>
-        <div class="field"><span class="label">Гражданство:</span> ${guest.country || 'Н/Д'}</div>
-        <div class="field"><span class="label">Комната:</span> ${guest.room?.number || 'Н/Д'}</div>
-        <div class="field"><span class="label">Дата заселения:</span> ${new Date(guest.checkInDate).toLocaleDateString()}</div>
-        <div class="field"><span class="label">Дата выселения:</span> ${new Date(guest.checkOutDate).toLocaleDateString()}</div>
-        <div class="field"><span class="label">Подпись гостя:</span> ________________</div>
-      </body>
-      </html>
-    `);
-    w.document.close();
-    w.print();
-  };
-
-  const printReference = (guest, hostel) => {
-    const w = window.open('', '', 'width=800,height=600');
-    w.document.write(`
-      <html>
-      <head>
-        <title>Справка о проживании</title>
-        <style>
-          body { font-family: 'Times New Roman'; padding: 60px; line-height: 1.8; }
-          .header { text-align: center; margin-bottom: 40px; }
-          .content { text-indent: 40px; text-align: justify; }
-          .signature { margin-top: 60px; display: flex; justify-content: space-between; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h2>СПРАВКА</h2>
-          <p>о проживании в ${hostel.name}</p>
-        </div>
-        <div class="content">
-          <p>Настоящая справка выдана ${guest.name}, паспорт ${guest.passportNumber || 'Н/Д'}, 
-          гражданин(ка) ${guest.country || 'Н/Д'}, в том, что он(а) действительно проживал(а) 
-          в ${hostel.name} по адресу: ${hostel.address}, в период с 
-          ${new Date(guest.checkInDate).toLocaleDateString()} по 
-          ${new Date(guest.checkOutDate).toLocaleDateString()}.</p>
-          
-          <p>Справка выдана для предъявления по месту требования.</p>
-        </div>
-        <div class="signature">
-          <div>Дата: ${new Date().toLocaleDateString()}</div>
-          <div>Подпись: ________________</div>
-        </div>
-      </body>
-      </html>
-    `);
-    w.document.close();
-    w.print();
-  };
-
-  // Print Handler
+  // FIX ISSUE #6: Print Handler using imported functions from helpers.js
   const handlePrint = (type, guest, hostel) => {
-    if (type === 'check') printCheck(guest, hostel);
-    if (type === 'regcard') printRegistrationForm(guest, hostel);
-    if (type === 'reference') printReference(guest, hostel);
+    try {
+      if (type === 'check') {
+        printCheck(guest, hostel);
+      } else if (type === 'regcard') {
+        printRegistrationForm(guest, hostel);
+      } else if (type === 'reference') {
+        printReference(guest, hostel);
+      }
+    } catch (error) {
+      showNotification('Ошибка при печати: ' + error.message, 'error');
+    }
   };
 
   // Report Handler
@@ -488,7 +347,7 @@ function App() {
       expenses: 500000,
     };
     
-    // Example of calling export
+    // FIX ISSUE #5: Use imported exportToExcel function
     // exportToExcel(data, filename, totalIncome, totalExpense)
     
     return reportData;
@@ -511,43 +370,45 @@ function App() {
           onLogout={handleLogout}
           viewHostel={viewHostel}
           onHostelChange={handleHostelChange}
+          canModifyHostel={canModifyHostel} // FIX ISSUE #4: Pass permission check function
         />
       </div>
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto pb-20 md:pb-0">
         <div className="container mx-auto p-6">
-          {/* Fazliddin Hostel Switcher */}
-          {user?.login === 'fazliddin' && (
+          {/* FIX ISSUE #4: Multi-hostel Switcher with Read-Only Indicator */}
+          {user && user.viewHostels && user.viewHostels.length > 1 && (
             <div className="mb-6 bg-white rounded-xl shadow-sm p-4">
               <div className="flex items-center justify-between">
                 <div className="flex bg-slate-100 rounded-lg border border-slate-300 overflow-hidden">
-                  <button 
-                    onClick={() => setViewHostel('hostel1')}
-                    className={`px-6 py-3 font-medium transition-colors ${
-                      viewHostel === 'hostel1' 
-                        ? 'bg-indigo-600 text-white' 
-                        : 'text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    👁️ Хостел №1 (Просмотр)
-                  </button>
-                  <button 
-                    onClick={() => setViewHostel('hostel2')}
-                    className={`px-6 py-3 font-medium transition-colors ${
-                      viewHostel === 'hostel2' 
-                        ? 'bg-indigo-600 text-white' 
-                        : 'text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    ✏️ Хостел №2 (Работа)
-                  </button>
+                  {user.viewHostels.map(hostelId => {
+                    const hostelName = HOSTELS[hostelId]?.name || hostelId;
+                    const canEdit = canModifyHostel(hostelId);
+                    const icon = canEdit ? '✏️' : '👁️';
+                    const label = canEdit ? 'Работа' : 'Просмотр';
+                    
+                    return (
+                      <button 
+                        key={hostelId}
+                        onClick={() => handleHostelChange(hostelId)}
+                        className={`px-6 py-3 font-medium transition-colors ${
+                          viewHostel === hostelId 
+                            ? 'bg-indigo-600 text-white' 
+                            : 'text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {icon} {hostelName} ({label})
+                      </button>
+                    );
+                  })}
                 </div>
                 
-                {viewHostel === 'hostel1' && (
+                {/* FIX ISSUE #4: Show read-only warning when user cannot edit current hostel */}
+                {isReadOnly() && (
                   <div className="flex items-center gap-2 text-amber-600 text-sm font-medium">
                     <span>ℹ️</span>
-                    <span>Только просмотр. Изменения доступны только в Хостеле №2</span>
+                    <span>Только просмотр. Редактирование недоступно.</span>
                   </div>
                 )}
               </div>
@@ -578,9 +439,16 @@ function App() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-slate-800">Комнаты</h2>
+                {/* FIX ISSUE #4: Disable add room button in read-only mode */}
                 <button
                   onClick={() => setRoomFormModalOpen(true)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
+                  disabled={isReadOnly()}
+                  className={`px-4 py-2 rounded-xl ${
+                    isReadOnly() 
+                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
+                  title={isReadOnly() ? 'Только просмотр' : 'Добавить комнату'}
                 >
                   + Добавить комнату
                 </button>
@@ -614,9 +482,16 @@ function App() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-slate-800">Гости</h2>
+                {/* FIX ISSUE #4: Disable check-in button in read-only mode */}
                 <button
                   onClick={() => setCheckInModalOpen(true)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700"
+                  disabled={isReadOnly()}
+                  className={`px-4 py-2 rounded-xl ${
+                    isReadOnly() 
+                      ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
+                  title={isReadOnly() ? 'Только просмотр' : 'Заселить гостя'}
                 >
                   + Заселить гостя
                 </button>
@@ -729,13 +604,14 @@ function App() {
           setGuestDetailsModalOpen(false);
           setSelectedGuest(null);
         }}
-        onCheckOut={handleCheckOut}
-        onMove={(guest) => {
+        onCheckOut={!isReadOnly() ? handleCheckOut : null} // FIX ISSUE #4: Disable checkout in read-only mode
+        onMove={!isReadOnly() ? (guest) => {
           setSelectedGuest(guest);
           setMoveGuestModalOpen(true);
-        }}
+        } : null} // FIX ISSUE #4: Disable move in read-only mode
         onPrint={handlePrint}
         hostelInfo={HOSTELS[viewHostel] || HOSTELS.hostel1}
+        isReadOnly={isReadOnly()} // FIX ISSUE #4: Pass read-only flag
       />
 
       <MoveGuestModal

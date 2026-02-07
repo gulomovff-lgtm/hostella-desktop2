@@ -12,8 +12,9 @@ import { formatDateDisplay, formatCurrency } from '../../utils/helpers';
  * @param {function} props.onMove - Move guest handler
  * @param {function} props.onPrint - Print handler (for check, regcard, reference)
  * @param {Object} props.hostelInfo - Hostel information for printing
+ * @param {boolean} props.isReadOnly - Whether user is in read-only mode (FIX ISSUE #4)
  */
-const GuestDetailsModal = ({ guest, isOpen, onClose, onCheckOut, onMove, onPrint, hostelInfo }) => {
+const GuestDetailsModal = ({ guest, isOpen, onClose, onCheckOut, onMove, onPrint, hostelInfo, isReadOnly }) => {
   if (!isOpen || !guest) return null;
   
   const {
@@ -142,15 +143,21 @@ const GuestDetailsModal = ({ guest, isOpen, onClose, onCheckOut, onMove, onPrint
             <Button variant="secondary" onClick={onClose} className="flex-1">
               Закрыть
             </Button>
-            {onMove && (
+            {/* FIX ISSUE #4: Show move and checkout buttons only if user has edit permissions */}
+            {onMove && !isReadOnly && (
               <Button variant="outline" onClick={() => onMove(guest)} className="flex-1">
                 Переселить
               </Button>
             )}
-            {onCheckOut && (
+            {onCheckOut && !isReadOnly && (
               <Button variant="danger" onClick={() => onCheckOut(guest)} className="flex-1">
                 Выселить
               </Button>
+            )}
+            {isReadOnly && (
+              <div className="flex-1 flex items-center justify-center text-amber-600 text-sm font-medium">
+                <span>🔒 Только просмотр</span>
+              </div>
             )}
           </div>
         </div>
