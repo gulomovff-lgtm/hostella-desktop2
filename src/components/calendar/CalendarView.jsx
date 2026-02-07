@@ -58,9 +58,10 @@ const CalendarView = ({ bookings = [], onDateClick }) => {
       checkIn.setHours(0, 0, 0, 0);
       checkOut.setHours(0, 0, 0, 0);
       
-      // For checked out guests, use actual checkOutDate instead of extending to today
-      const endDate = b.status === 'checked-out' ? checkOut : 
-                      (checkOut < today ? checkOut : today);
+      // For checked out guests (has actual checkOutDate in the past), use that date
+      // Otherwise extend to today if guest is still active
+      const isCheckedOut = b.checkedOut === true || checkOut < today;
+      const endDate = isCheckedOut ? checkOut : today;
       
       return currentDate >= checkIn && currentDate <= endDate;
     });

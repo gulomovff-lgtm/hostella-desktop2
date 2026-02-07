@@ -145,14 +145,12 @@ function App() {
 
   // Permission Helpers
   const canViewHostel = (hostelId) => {
-    if (user?.role === 'super') return true;
     if (user?.role === 'admin') return true;
     if (user?.login === 'fazliddin') return true; // Can view all hostels
     return user?.hostelId === hostelId;
   };
 
   const canModifyHostel = (hostelId) => {
-    if (user?.role === 'super') return true;
     if (user?.role === 'admin') return true;
     if (user?.login === 'fazliddin' && hostelId === 'hostel2') return true; // Can only modify hostel2
     return user?.hostelId === hostelId && user?.role === 'cashier';
