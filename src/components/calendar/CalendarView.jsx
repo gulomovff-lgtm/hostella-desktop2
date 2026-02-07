@@ -95,10 +95,10 @@ const CalendarView = ({ bookings = [], rooms = [], onGuestClick }) => {
     
     const totalPaid = getTotalPaid(guest);
     const totalPrice = guest.totalPrice || 0;
-    const pricePerNight = parseInt(guest.pricePerNight) || 0;
+    const pricePerNight = parseFloat(guest.pricePerNight) || 0;
     
-    // Skip payment visualization if price data is invalid
-    if (pricePerNight === 0 || totalPrice === 0) {
+    // Skip payment visualization if price data is invalid or too small
+    if (pricePerNight < 1 || totalPrice === 0) {
       return (
         <div
           className="absolute h-8 cursor-pointer rounded overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-slate-400"
@@ -233,7 +233,7 @@ const CalendarView = ({ bookings = [], rooms = [], onGuestClick }) => {
                 }`}
               >
                 <div>{day.day}</div>
-                <div className="text-[10px]">
+                <div className="text-xs opacity-75">
                   {['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'][day.date.getDay()]}
                 </div>
               </div>
