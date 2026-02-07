@@ -183,8 +183,10 @@ function App() {
   };
 
   const handleCheckOut = async (guest, checkoutData) => {
-    // Calculate balance (debt)
-    const balance = (guest.totalPrice || 0) - (guest.paidAmount || 0);
+    // Calculate balance (debt) with type coercion
+    const totalPrice = parseFloat(guest.totalPrice) || 0;
+    const paidAmount = parseFloat(guest.paidAmount) || 0;
+    const balance = totalPrice - paidAmount;
     
     // Block checkout if guest has debt (balance > 0 means they owe money)
     // Allow checkout when balance <= 0 (fully paid or overpaid)

@@ -120,7 +120,7 @@ const CalendarView = ({ bookings = [], rooms = [], onGuestClick }) => {
     
     // Calculate paid and debt days (ensure totalDays is always >= 1)
     const paidDays = Math.floor(totalPaid / pricePerNight);
-    const totalDays = Math.max(parseInt(guest.days) || 1, 1);
+    const totalDays = parseInt(guest.days) || 1;
     const debtDays = Math.max(0, totalDays - paidDays);
     
     const paidPercent = (paidDays / totalDays) * 100;

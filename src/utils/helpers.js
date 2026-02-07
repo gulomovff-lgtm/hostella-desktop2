@@ -255,6 +255,7 @@ export const getDocData = (doc) => {
 
 // Get total paid amount for a guest (accessor function with type safety)
 export const getGuestPaidAmount = (guest) => {
+  if (!guest) return 0;
   return parseFloat(guest.paidAmount) || 0;
 };
 
