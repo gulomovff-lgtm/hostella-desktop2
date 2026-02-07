@@ -189,7 +189,7 @@ function App() {
     // Block checkout if guest has debt (balance > 0 means they owe money)
     // Allow checkout when balance <= 0 (fully paid or overpaid)
     if (balance > 0) {
-      showNotification(`Ошибка! Долг: ${balance}. Невозможно выселить.`, 'error');
+      showNotification(`Ошибка! Долг: ${balance.toLocaleString()}. Невозможно выселить.`, 'error');
       return;
     }
     
@@ -198,7 +198,7 @@ function App() {
     
     // TODO: Implement Firebase logic
     showNotification('Гость выселен', 'success');
-    await sendTelegramMessage(`🚪 Выселение: ${guest.name || guest.fullName} из комнаты ${guest.room?.number || guest.roomNumber}. Возврат: ${refund}`);
+    await sendTelegramMessage(`🚪 Выселение: ${guest.name || guest.fullName} из комнаты ${guest.room?.number || guest.roomNumber}. Возврат: ${refund.toLocaleString()}`);
   };
 
   const handleMoveGuest = async (guestId, newRoomId) => {

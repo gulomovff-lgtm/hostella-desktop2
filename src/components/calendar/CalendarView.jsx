@@ -94,7 +94,7 @@ const CalendarView = ({ bookings = [], rooms = [], onGuestClick }) => {
     if (!style) return null;
     
     const totalPaid = getTotalPaid(guest);
-    const totalPrice = guest.totalPrice || 0;
+    const totalPrice = parseFloat(guest.totalPrice) || 0;
     const pricePerNight = parseFloat(guest.pricePerNight) || 0;
     
     // Skip payment visualization if price data is invalid or too small
@@ -110,7 +110,7 @@ const CalendarView = ({ bookings = [], rooms = [], onGuestClick }) => {
           onClick={() => onGuestClick?.(guest)}
         >
           <div className="absolute inset-0 flex items-center px-2 z-10">
-            <span className="font-bold text-xs text-white bg-black/80 px-2 py-1 rounded truncate">
+            <span className="font-bold text-xs text-white bg-black px-2 py-1 rounded truncate">
               {guest.fullName || guest.name}
             </span>
           </div>
@@ -118,9 +118,9 @@ const CalendarView = ({ bookings = [], rooms = [], onGuestClick }) => {
       );
     }
     
-    // Calculate paid and debt days
+    // Calculate paid and debt days (ensure totalDays is always >= 1)
     const paidDays = Math.floor(totalPaid / pricePerNight);
-    const totalDays = parseInt(guest.days) || 1;
+    const totalDays = Math.max(parseInt(guest.days) || 1, 1);
     const debtDays = Math.max(0, totalDays - paidDays);
     
     const paidPercent = (paidDays / totalDays) * 100;
@@ -155,9 +155,9 @@ const CalendarView = ({ bookings = [], rooms = [], onGuestClick }) => {
           )}
         </div>
         
-        {/* Guest name overlay with improved contrast */}
+        {/* Guest name overlay with high contrast for accessibility */}
         <div className="absolute inset-0 flex items-center px-2 z-10">
-          <span className="font-bold text-xs text-white bg-black/80 px-2 py-1 rounded truncate">
+          <span className="font-bold text-xs text-white bg-black px-2 py-1 rounded truncate">
             {guest.fullName || guest.name}
           </span>
         </div>

@@ -253,9 +253,9 @@ export const getDocData = (doc) => {
  * Print Functions
  */
 
-// Get total paid amount for a guest (accessor function)
+// Get total paid amount for a guest (accessor function with type safety)
 export const getGuestPaidAmount = (guest) => {
-  return guest.paidAmount || 0;
+  return parseFloat(guest.paidAmount) || 0;
 };
 
 // Alias for backwards compatibility
@@ -288,10 +288,10 @@ export const printCheck = (guest, hostel) => {
       <div class="row"><span>Комната:</span><span>${guest.roomNumber || guest.room?.number}</span></div>
       <div class="row"><span>Место:</span><span>${guest.bedId || 'Н/Д'}</span></div>
       <div class="row"><span>Дней:</span><span>${guest.days}</span></div>
-      <div class="row"><span>Цена/ночь:</span><span>${guest.pricePerNight}</span></div>
+      <div class="row"><span>Цена/ночь:</span><span>${(parseFloat(guest.pricePerNight) || 0).toLocaleString()}</span></div>
       <div class="line"></div>
-      <div class="row"><b>ИТОГО:</b><b>${guest.totalPrice}</b></div>
-      <div class="row"><span>Оплачено:</span><span>${getTotalPaid(guest)}</span></div>
+      <div class="row"><b>ИТОГО:</b><b>${(parseFloat(guest.totalPrice) || 0).toLocaleString()}</b></div>
+      <div class="row"><span>Оплачено:</span><span>${getTotalPaid(guest).toLocaleString()}</span></div>
       <div class="line"></div>
       <div class="center"><small>Спасибо!</small></div>
     </body>
